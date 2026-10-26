@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>地圖自動辨識V6.1 - 桃太郎電鐵地圖雙模式數據導出編輯器</title>
+<title>地圖自動辨識V6.2 - 桃太郎電鐵地圖雙模式數據導出編輯器</title>
 <style>
 body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
 .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
@@ -147,6 +147,8 @@ textarea { width: 100%; height: 220px; font-family: monospace; font-size: 12px; 
     <h3>3. Tool2 V54 標準 JSON 輸出區</h3>
     <div style="margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap;">
         <button class="export-btn" style="background: #8e44ad;" onclick="copyJson()">📋 複製 JSON 數據</button>
+        <!-- 💡 新增的直接下載 JSON 按鈕 -->
+        <button class="export-btn" onclick="downloadJsonFile()">💾 下載 JSON 檔</button>
         <span id="copyTip">已複製成功！✓</span>
     </div>
     <textarea id="jsonOutput" placeholder="自動生成的 V54 JSON 數據將會顯示在此處供您複製..."></textarea>
@@ -202,7 +204,7 @@ function loadPresetLibrary(filename) {
         });
 }
 
-// 💡 一鍵清空所有圖庫功能（已修正語法錯誤）
+// 💡 一鍵清空所有圖庫功能
 function clearTemplateLibrary() {
     if (templateLibrary.length === 0) {
         alert("目前圖庫已經是空的！");
@@ -366,7 +368,7 @@ function importTemplateLibrary(event) {
                 alert("❌ 格式錯誤：無效的圖庫 JSON 檔案！");
                 return;
             }
-            templateLibrary = []; // 匯入前先清空
+            templateLibrary = []; 
             loadTemplatesFromData(importedData, file.name);
         } catch (err) {
             alert("❌ 解析圖庫 JSON 失敗：" + err.message);
@@ -378,7 +380,7 @@ function importTemplateLibrary(event) {
 
 function loadTemplatesFromData(importedData, sourceName) {
     let loadedCount = 0;
-    templateLibrary = []; // 💡 確保每次載入或切換時，舊圖庫會被徹底清空
+    templateLibrary = []; 
 
     importedData.forEach(item => {
         let img = new Image();
@@ -610,6 +612,25 @@ function copyJson() {
         document.execCommand('copy');
         showCopyTip();
     });
+}
+
+// 💡 新增：直接下載 JSON 檔的 JavaScript 函式
+function downloadJsonFile() {
+    let textarea = document.getElementById('jsonOutput');
+    let jsonContent = textarea.value;
+    if (!jsonContent) {
+        alert("目前沒有可供下載的 JSON 數據！請先執行辨識。");
+        return;
+    }
+
+    let fileName = (regionNameVal ? regionNameVal.trim() : "map_data") + ".json";
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonContent);
+    let anchor = document.createElement('a');
+    anchor.setAttribute("href", dataStr);
+    anchor.setAttribute("download", fileName);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
 }
 
 function showCopyTip() {
