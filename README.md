@@ -1,4 +1,5 @@
-# momotetsu-map-recognizer
+#Momotaro-Tool-map-recognizer
+#桃太郎電鐵-工具
 桃太郎電鐵-地圖辨識器V6版本
 
 ## 🗺️ 專案功能特色
