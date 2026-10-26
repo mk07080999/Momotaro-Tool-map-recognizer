@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>地圖自動辨識V4 - 桃太郎電鐵地圖雙模式數據導出編輯器</title>
+<style>
+body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
+.card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+.row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+.col { flex: 1; min-width: 250px; }
+
+/* 縮放預覽容器 */
+.canvas-container {
+    width: 100%;
+    height: 500px;
+    overflow: auto;
+    border: 1px solid #cbd5e1;
+    background: #0f172a;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+canvas {
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    transform-origin: top left;
+    transition: transform 0.1s ease;
+}
+
+button { padding: 8px 15px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; margin-right: 5px; }
+button:hover { background: #219150; }
+button.export-btn { background: #2980b9; }
+button.export-btn:hover { background: #1f638f; }
+button.import-btn { background: #8e44ad; }
+button.import-btn:hover { background: #732d91; }
+button.clear-btn { background: #e74c3c; }
+button.clear-btn:hover { background: #c0392b; }
+
+/* 精簡的橫向排列清單容器 */
+#templateList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+}
+.template-item { 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 6px; 
+    background: #f8f9fa; 
+    border: 1px solid #cbd5e1; 
+    padding: 5px 8px; 
+    border-radius: 6px; 
+}
+.template-item img { width: 24px; height: 24px; object-fit: contain; border: 1px solid #ccc; background: #fff; }
+.color-badge { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+select, input[type="text"], input[type="number"] { padding: 3px 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; }
+.toolbar { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; background: #edf2f7; padding: 8px 12px; border-radius: 6px; }
+textarea { width: 100%; height: 220px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #1e272c; color: #2ecc71; resize: vertical; }
+.version-badge { background: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+
+/* 複製成功提示文字樣式 */
+#copyTip {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #27ae60;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+#copyTip.show {
+    opacity: 1;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h2>桃太郎電鐵地圖數據導出編輯器 <span class="version-badge">地圖自動辨識 V4</span></h2>
+    <div class="row">
+        <div class="col">
+            <label><b>大地圖圖片：</b></label><br>
+            <input type="file" id="uploadMap" accept="image/*">
+        </div>
+        <div class="col">
+            <label><b>批次上傳小圖案 (支援智慧關鍵字)：</b></label><br>
+            <input type="file" id="uploadTemplates" accept="image/*" multiple>
+        </div>
+    </div>
+
+    <div style="margin-top: 10px;">
+        <label><b>🗺️ 區域名稱 (Region)：</b></label>
+        <input type="text" id="regionName" value="Okinawa" style="width: 150px;" oninput="syncRegionName(this.value)">
+    </div>
+
+    <div style="margin-top: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <b>📦 圖塊樣板庫與辨識門檻：</b>
+            <div>
+                <button class="export-btn" style="margin:0; padding:4px 10px; font-size:12px;" onclick="exportTemplateLibrary()">💾 匯出圖庫包 (.json)</button>
+                <label class="import-btn" style="display:inline-block; margin:0; padding:4px 10px; background:#8e44ad; color:white; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;">
+                    📥 匯入圖庫包 (.json)
+                    <input type="file" id="importTemplatesFile" accept=".json" style="display:none;" onchange="importTemplateLibrary(event)">
+                </label>
+            </div>
+        </div>
+        <div id="templateList">
+            <i style="color: #888;">尚未上傳任何圖塊...</i>
+        </div>
+    </div>
+
+    <div style="margin-top: 15px;">
+        <button id="matchBtn">🔍 執行自動辨識與網格編碼 (Y軸向上)</button>
+        <button class="clear-btn" onclick="clearResults()">🧹 清除畫布</button>
+    </div>
+    <div id="result" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></div>
+</div>
+
+<div class="card">
+    <h3>2. 視覺化座標網格預覽檢視 (Y軸向上遞增)</h3>
+    <div class="toolbar">
+        <label><b>🔍 畫布縮放控制：</b></label>
+        <input type="range" id="zoomRange" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateZoom(this.value)">
+        <span id="zoomVal" style="font-weight: bold; color: #2980b9; min-width: 45px;">100%</span>
+        <button style="margin:0; padding:4px 10px; background:#7f8c8d;" onclick="resetZoom()">重置大小 (100%)</button>
+    </div>
+    
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="resultCanvas"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <h3>3. V62 標準 JSON 輸出區</h3>
+    <div style="margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap;">
+        <button class="export-btn" style="background: #8e44ad;" onclick="copyJson()">📋 複製 JSON 數據</button>
+        <span id="copyTip">已複製成功！✓</span>
+    </div>
+    <textarea id="jsonOutput" placeholder="自動生成的 V62 JSON 數據將會顯示在此處供您複製..."></textarea>
+</div>
+
+<script>
+let mapImg = null;
+let templateLibrary = [];
+let currentNodes = []; 
+let blockedConnections = []; 
+let regionNameVal = "Okinawa";
+let currentZoom = 1.0;
+
+const v61Attributes = {
+    normal: { label: "🟣 車站", color: "#8e44ad" },
+    blue: { label: "🔵 藍格", color: "#3498db" },
+    red: { label: "🔴 紅格", color: "#e74c3c" },
+    yellow: { label: "🟡 黃格", color: "#f1c40f" },
+    card_shop: { label: "🏪 卡片賣場", color: "#16a085" },
+    copy_station: { label: "🖨️ 複製車站", color: "#34495e" },
+    flight_station: { label: "✈️ 飛航車站", color: "#00a8ff" },
+    ship_station: { label: "🚢 乘船車站", color: "#1e272c" },
+    rail_station: { label: "🛤️ 鐵道站", color: "#27ae60" },
+    heli_station: { label: "🚁 直升機站", color: "#d35400" },
+    reset_station: { label: "🔄 重置周遊", color: "#e67e22" },
+    good_card: { label: "💎 好卡片車站", color: "#e84393" },
+    bank: { label: "🏦 銀行車站", color: "#f39c12" },
+    special: { label: "⚙️ 特殊", color: "#95a5a6" },
+    monster: { label: "👾 名產怪獸", color: "#c0392b" }
+};
+
+function autoDetectAttribute(filename) {
+    let lower = filename.toLowerCase();
+    if (lower.includes("good") || lower.includes("好卡") || lower.includes("good_card")) return "good_card";
+    if (lower.includes("card") || lower.includes("卡片") || lower.includes("賣場")) return "card_shop";
+    if (lower.includes("blue") || lower.includes("藍")) return "blue";
+    if (lower.includes("red") || lower.includes("紅")) return "red";
+    if (lower.includes("yellow") || lower.includes("黃")) return "yellow";
+    if (lower.includes("copy") || lower.includes("複製")) return "copy_station";
+    if (lower.includes("flight") || lower.includes("飛航") || lower.includes("機場")) return "flight_station";
+    if (lower.includes("ship") || lower.includes("乘船") || lower.includes("港口")) return "ship_station";
+    if (lower.includes("rail") || lower.includes("鐵道")) return "rail_station";
+    if (lower.includes("heli") || lower.includes("直升機")) return "heli_station";
+    if (lower.includes("reset") || lower.includes("重置")) return "reset_station";
+    if (lower.includes("bank") || lower.includes("銀行")) return "bank";
+    if (lower.includes("special") || lower.includes("特殊")) return "special";
+    if (lower.includes("monster") || lower.includes("怪獸") || lower.includes("名產")) return "monster";
+    return "normal";
+}
+
+document.getElementById('uploadMap').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    if (!file) return;
+    let reader = new FileReader();
+    reader.onload = function(event) {
+        let img = new Image();
+        img.onload = function() {
+            mapImg = img;
+            drawCanvas();
+            document.getElementById('result').innerHTML = `✅ 大地圖載入成功 (${img.width}x${img.height}px)`;
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('uploadTemplates').addEventListener('change', function(e) {
+    let files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    let filesArray = Array.from(files);
+    let loadedCount = 0;
+
+    filesArray.forEach((file) => {
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let img = new Image();
+            img.onload = function() {
+                let fileName = file.name.replace(/\.[^/.]+$/, "");
+                let detectedAttr = autoDetectAttribute(fileName);
+                let color = v61Attributes[detectedAttr].color;
+
+                let tCanvas = document.createElement('canvas');
+                tCanvas.width = img.width;
+                tCanvas.height = img.height;
+                let tCtx = tCanvas.getContext('2d');
+                tCtx.drawImage(img, 0, 0);
+                let tData = tCtx.getImageData(0, 0, img.width, img.height).data;
+
+                templateLibrary.push({
+                    name: fileName,
+                    attribute: detectedAttr,
+                    threshold: 0.70,
+                    img: img,
+                    color: color,
+                    data: tData,
+                    width: img.width,
+                    height: img.height
+                });
+
+                loadedCount++;
+                if (loadedCount === filesArray.length) {
+                    renderTemplateList();
+                }
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    this.value = '';
+});
+
+function renderTemplateList() {
+    let container = document.getElementById('templateList');
+    if (templateLibrary.length === 0) {
+        container.innerHTML = '<i style="color: #888;">尚未上傳任何圖塊...</i>';
+        return;
+    }
+    let html = '';
+    templateLibrary.forEach((tpl, idx) => {
+        let optionsHtml = Object.keys(v61Attributes).map(key => 
+            `<option value="${key}" ${tpl.attribute === key ? 'selected' : ''}>${v61Attributes[key].label}</option>`
+        ).join('');
+
+        html += `
+            <div class="template-item">
+                <span class="color-badge" style="background: ${tpl.color};"></span>
+                <img src="${tpl.img.src}">
+                <input type="text" value="${tpl.name}" onchange="templateLibrary[${idx}].name=this.value" style="width:80px;" title="名稱">
+                <select onchange="templateLibrary[${idx}].attribute=this.value; templateLibrary[${idx}].color=v61Attributes[this.value].color; renderTemplateList();" style="width:90px;" title="屬性">${optionsHtml}</select>
+                <input type="number" min="0.50" max="0.95" step="0.01" value="${tpl.threshold}" onchange="templateLibrary[${idx}].threshold=parseFloat(this.value)" style="width:48px;" title="門檻">
+                <button style="margin:0; background:#95a5a6; padding:2px 6px; font-size:10px;" onclick="templateLibrary.splice(${idx},1); renderTemplateList();">刪除</button>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// 💡 新增：匯出圖庫包功能
+function exportTemplateLibrary() {
+    if (templateLibrary.length === 0) {
+        alert("目前沒有任何圖塊可以匯出！");
+        return;
+    }
+
+    let exportData = templateLibrary.map(tpl => {
+        // 將 Image 轉為 Base64 儲存
+        let c = document.createElement('canvas');
+        c.width = tpl.width;
+        c.height = tpl.height;
+        let ctx = c.getContext('2d');
+        ctx.drawImage(tpl.img, 0, 0);
+        
+        return {
+            name: tpl.name,
+            attribute: tpl.attribute,
+            threshold: tpl.threshold,
+            dataUrl: c.toDataURL()
+        };
+    });
+
+    let jsonStr = JSON.stringify(exportData, null, 2);
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
+    let anchor = document.createElement('a');
+    anchor.setAttribute("href", dataStr);
+    anchor.setAttribute("download", `map_template_library_${Date.now()}.json`);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+}
+
+// 💡 新增：匯入圖庫包功能
+function importTemplateLibrary(event) {
+    let file = event.target.files[0];
+    if (!file) return;
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let importedData = JSON.parse(e.target.result);
+            if (!Array.isArray(importedData)) {
+                alert("❌ 格式錯誤：無效的圖庫 JSON 檔案！");
+                return;
+            }
+
+            let loadedCount = 0;
+            templateLibrary = []; // 清空現有圖庫
+
+            importedData.forEach(item => {
+                let img = new Image();
+                img.onload = function() {
+                    let tCanvas = document.createElement('canvas');
+                    tCanvas.width = img.width;
+                    tCanvas.height = img.height;
+                    let tCtx = tCanvas.getContext('2d');
+                    tCtx.drawImage(img, 0, 0);
+                    let tData = tCtx.getImageData(0, 0, img.width, img.height).data;
+
+                    let color = v61Attributes[item.attribute] ? v61Attributes[item.attribute].color : "#8e44ad";
+
+                    templateLibrary.push({
+                        name: item.name,
+                        attribute: item.attribute,
+                        threshold: item.threshold || 0.70,
+                        img: img,
+                        color: color,
+                        data: tData,
+                        width: img.width,
+                        height: img.height
+                    });
+
+                    loadedCount++;
+                    if (loadedCount === importedData.length) {
+                        renderTemplateList();
+                    }
+                };
+                img.src = item.dataUrl;
+            });
+
+            document.getElementById('result').innerHTML = `✅ 成功匯入圖庫包！共載入 ${importedData.length} 個圖塊。`;
+        } catch (err) {
+            alert("❌ 解析圖庫 JSON 失敗：" + err.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // 清空選取狀態以便重複匯入同個檔案
+}
+
+function drawCanvas() {
+    if (!mapImg) return;
+    let canvas = document.getElementById('resultCanvas');
+    canvas.width = mapImg.width;
+    canvas.height = mapImg.height;
+    let ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(mapImg, 0, 0);
+
+    currentNodes.forEach(n => {
+        let attrConf = v61Attributes[n.tpl.attribute] || { color: "#8e44ad", label: n.tpl.attribute };
+        
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = attrConf.color;
+        ctx.strokeRect(n.x, n.y, n.tw, n.th);
+
+        ctx.fillStyle = attrConf.color;
+        ctx.fillRect(n.x, n.y - 18, ctx.measureText(n.tpl.attribute).width + 10, 16);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(n.tpl.attribute, n.x + 5, n.y - 6);
+
+        let coordText = `(${n.gx},${n.gy})`;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.fillRect(n.x, n.y + n.th + 2, ctx.measureText(coordText).width + 8, 16);
+        ctx.fillStyle = "#f1c40f";
+        ctx.font = "bold 12px monospace";
+        ctx.fillText(coordText, n.x + 4, n.y + n.th + 14);
+    });
+
+    updateJSONOutput();
+}
+
+document.getElementById('matchBtn').addEventListener('click', function() {
+    if (!mapImg || templateLibrary.length === 0) {
+        alert("請先上傳大地圖並匯入至少一個圖塊！");
+        return;
+    }
+
+    document.getElementById('result').innerText = `🔄 正在進行圖塊掃描與 Y 軸向上網格編碼...`;
+
+    setTimeout(() => {
+        let mapCanvas = document.createElement('canvas');
+        mapCanvas.width = mapImg.width;
+        mapCanvas.height = mapImg.height;
+        let mapCtx = mapCanvas.getContext('2d');
+        mapCtx.drawImage(mapImg, 0, 0);
+        let mapData = mapCtx.getImageData(0, 0, mapCanvas.width, mapCanvas.height).data;
+
+        let mw = mapImg.width;
+        let mh = mapImg.height;
+        let allMatches = [];
+
+        templateLibrary.forEach(tpl => {
+            let tw = tpl.width;
+            let th = tpl.height;
+            let tData = tpl.data;
+            let step = Math.max(1, Math.floor(tw / 4));
+
+            for (let y = 0; y <= mh - th; y += step) {
+                for (let x = 0; x <= mw - tw; x += step) {
+                    let totalDiff = 0, sampleCount = 0;
+                    for (let ty = 0; ty < th; ty += 2) {
+                        for (let tx = 0; tx < tw; tx += 2) {
+                            let mIdx = ((y + ty) * mw + (x + tx)) * 4;
+                            let tIdx = (ty * tw + tx) * 4;
+                            totalDiff += (Math.abs(mapData[mIdx] - tData[tIdx]) + Math.abs(mapData[mIdx+1] - tData[tIdx+1]) + Math.abs(mapData[mIdx+2] - tData[tIdx+2])) / 3;
+                            sampleCount++;
+                        }
+                    }
+                    let similarity = 1 - ((totalDiff / sampleCount) / 255);
+                    if (similarity >= tpl.threshold) {
+                        allMatches.push({ x, y, tw, th, similarity, tpl });
+                    }
+                }
+            }
+        });
+
+        allMatches.sort((a, b) => b.similarity - a.similarity);
+        let nodes = [];
+        allMatches.forEach(m => {
+            let isOverlap = nodes.some(n => Math.abs(n.x - m.x) < m.tw * 0.8 && Math.abs(n.y - m.y) < m.th * 0.8);
+            if (!isOverlap) {
+                nodes.push({ x: m.x, y: m.y, tw: m.tw, th: m.th, tpl: m.tpl, gx: null, gy: null, visited: false });
+            }
+        });
+
+        if (nodes.length === 0) {
+            document.getElementById('result').innerHTML = "⚠️ 找不到任何符合的圖塊，請調降門檻值。";
+            return;
+        }
+
+        nodes.sort((a, b) => {
+            let scoreA = a.x - a.y; 
+            let scoreB = b.x - b.y;
+            return scoreA - scoreB;
+        });
+
+        let originNode = nodes[0];
+        originNode.gx = 0; 
+        originNode.gy = 0; 
+        originNode.visited = true;
+
+        let gridUnit = originNode.tw * 1.1;
+        let queue = [originNode];
+
+        while (queue.length > 0) {
+            let current = queue.shift();
+            nodes.forEach(neighbor => {
+                if (neighbor.visited) return;
+                let dx = neighbor.x - current.x;
+                let pixelDy = neighbor.y - current.y; 
+                let absDx = Math.abs(dx), absDy = Math.abs(pixelDy);
+
+                if ((absDy < gridUnit * 0.5) && (absDx >= gridUnit * 0.7 && absDx <= gridUnit * 2.5)) {
+                    neighbor.gx = current.gx + (dx > 0 ? 1 : -1);
+                    neighbor.gy = current.gy;
+                    neighbor.visited = true;
+                    queue.push(neighbor);
+                } 
+                else if ((absDx < gridUnit * 0.5) && (absDy >= gridUnit * 0.7 && absDy <= gridUnit * 2.5)) {
+                    neighbor.gx = current.gx;
+                    neighbor.gy = current.gy + (pixelDy < 0 ? 1 : -1); 
+                    neighbor.visited = true;
+                    queue.push(neighbor);
+                }
+            });
+        }
+
+        nodes.forEach(n => {
+            if (n.gx === null || n.gy === null) {
+                n.gx = Math.round((n.x - originNode.x) / gridUnit);
+                n.gy = Math.round((originNode.y - n.y) / gridUnit); 
+            }
+        });
+
+        currentNodes = nodes;
+        blockedConnections = [];
+        drawCanvas();
+        document.getElementById('result').innerHTML = `🎯 辨識完成！共識別 ${nodes.length} 個標準網格節點（已修正 Y 軸向上遞增）。`;
+    }, 50);
+});
+
+function updateJSONOutput() {
+    let v62Export = {
+        region: regionNameVal,
+        nodes: currentNodes.map(n => ({
+            x: n.gx,
+            y: n.gy,
+            type: n.tpl.attribute
+        })),
+        blocked: blockedConnections,
+        oneway: [],
+        shortcuts: []
+    };
+    document.getElementById('jsonOutput').value = JSON.stringify(v62Export, null, 2);
+}
+
+function syncRegionName(val) {
+    regionNameVal = val;
+    updateJSONOutput();
+}
+
+function clearResults() {
+    currentNodes = [];
+    blockedConnections = [];
+    if (mapImg) drawCanvas();
+    else {
+        let canvas = document.getElementById('resultCanvas');
+        let ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('jsonOutput').value = "";
+    }
+    document.getElementById('result').innerHTML = "✨ 已清除。";
+}
+
+function updateZoom(val) {
+    currentZoom = parseFloat(val);
+    document.getElementById('zoomVal').innerText = Math.round(currentZoom * 100) + '%';
+    document.getElementById('zoomRange').value = currentZoom;
+    document.getElementById('resultCanvas').style.transform = `scale(${currentZoom})`;
+}
+
+function resetZoom() { updateZoom(1.0); }
+
+let copyTimeout = null;
+function copyJson() {
+    let textarea = document.getElementById('jsonOutput');
+    if (!textarea.value) return;
+    
+    navigator.clipboard.writeText(textarea.value).then(() => {
+        showCopyTip();
+    }).catch(err => {
+        textarea.select();
+        document.execCommand('copy');
+        showCopyTip();
+    });
+}
+
+function showCopyTip() {
+    let tip = document.getElementById('copyTip');
+    tip.classList.add('show');
+    if (copyTimeout) clearTimeout(copyTimeout);
+    copyTimeout = setTimeout(() => {
+        tip.classList.remove('show');
+    }, 2000);
+}
+</script>
+
+</body>
+</html>
+```[cite: 1]
