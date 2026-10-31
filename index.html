@@ -1,157 +1,679 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>地圖自動辨識V6.2 - 桃太郎電鐵地圖雙模式數據導出編輯器</title>
-<style>
-body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
-.card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-.row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
-.col { flex: 1; min-width: 250px; }
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-/* 縮放預覽容器 */
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>地圖自動辨識V7.13 - 桃太郎電鐵地圖數據導出編輯器</title>
+<style>
+/* 全域基礎設定：預設字體 20px */
+:root { --base-font-size: 20px; }
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    padding: 14px; 
+    background: #0f172a; 
+    color: #f8fafc; 
+    font-size: var(--base-font-size); 
+    user-select: none; 
+    -webkit-user-select: none; 
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.box { 
+    background: #1e293b; 
+    padding: 16px; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); 
+    margin-bottom: 14px; 
+    border: 1px solid #334155; 
+    text-align: left;
+}
+
+.box.flex-fill {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.row { 
+    display: flex; 
+    gap: 12px; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    margin-bottom: 12px; 
+    text-align: left;
+}
+
+.btn { 
+    padding: calc(var(--base-font-size) * 0.4) calc(var(--base-font-size) * 0.8); 
+    font-size: var(--base-font-size); 
+    border: none; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    touch-action: manipulation; 
+    transition: background 0.2s, transform 0.1s; 
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn:hover { opacity: 0.9; }
+.btn:active { transform: scale(0.98); }
+
+.mode-btn {
+    background: #334155;
+    color: #cbd5e1;
+    border: 1px solid #475569;
+}
+.mode-btn.active {
+    background: #f59e0b;
+    color: #0f172a;
+    border-color: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    font-weight: bold;
+}
+
+.file-upload-btn {
+    display: block;
+    width: 100%;
+    padding: calc(var(--base-font-size) * 0.6) calc(var(--base-font-size) * 0.8);
+    background: #334155;
+    color: #34d399;
+    border: 1px dashed #059669;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: left;
+    box-sizing: border-box;
+    font-size: var(--base-font-size);
+    transition: all 0.2s;
+}
+.file-upload-btn:hover {
+    background: #065f46;
+    border-color: #34d399;
+    color: #fff;
+}
+
+.section-header { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    margin-bottom: 10px; 
+    flex-wrap: wrap; 
+    text-align: left;
+}
+
+h2, h3 { 
+    margin: 0; 
+    font-size: calc(var(--base-font-size) * 1.1); 
+    color: #38bdf8; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    text-align: left;
+}
+
+.status-tip { 
+    font-size: calc(var(--base-font-size) * 0.9); 
+    color: #facc15; 
+    font-weight: bold; 
+    background: #0f172a; 
+    padding: 4px 10px; 
+    border-radius: 4px; 
+    border: 1px solid #334155; 
+    display: inline-block; 
+}
+
+.file-status-text {
+    font-size: calc(var(--base-font-size) * 0.9);
+    color: #34d399 !important;
+    font-weight: bold;
+}
+
 .canvas-container {
     width: 100%;
-    height: 500px;
-    overflow: auto;
-    border: 1px solid #cbd5e1;
+    height: 520px;
+    min-height: 350px;
+    flex: 1;
+    overflow: hidden;
+    border: 1px solid #475569;
     background: #0f172a;
+    border-radius: 6px;
     position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 20px;
+    display: block;
+    cursor: grab;
+    transition: height 0.2s ease;
 }
+.canvas-container.panning { cursor: grabbing; }
+.canvas-container.drawing { cursor: crosshair; }
+.canvas-container.deleting { cursor: pointer; }
+.canvas-container.editing { cursor: pointer; }
+
+#canvasTransformTarget {
+    position: absolute;
+    transform-origin: top left;
+    transition: transform 0.05s ease-out;
+}
+
 canvas {
     background: #fff;
     box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    transform-origin: top left;
-    transition: transform 0.1s ease;
+    display: block;
 }
 
-button { padding: 8px 15px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; margin-right: 5px; }
-button:hover { background: #219150; }
-button.export-btn { background: #2980b9; }
-button.export-btn:hover { background: #1f638f; }
-button.import-btn { background: #8e44ad; }
-button.import-btn:hover { background: #732d91; }
-button.clear-btn { background: #e74c3c; }
-button.clear-btn:hover { background: #c0392b; }
-
-/* 精簡的橫向排列清單容器 */
 #templateList {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 5px;
+    margin-top: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #0f172a;
+    padding: 10px;
+    border: 1px solid #475569;
+    border-radius: 6px;
 }
 .template-item { 
     display: inline-flex; 
     align-items: center; 
     gap: 6px; 
-    background: #f8f9fa; 
-    border: 1px solid #cbd5e1; 
+    background: #334155; 
+    border: 1px solid #475569; 
     padding: 5px 8px; 
     border-radius: 6px; 
 }
-.template-item img { width: 24px; height: 24px; object-fit: contain; border: 1px solid #ccc; background: #fff; }
-.color-badge { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-select, input[type="text"], input[type="number"] { padding: 3px 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; }
-.toolbar { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; background: #edf2f7; padding: 8px 12px; border-radius: 6px; }
-textarea { width: 100%; height: 220px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #1e272c; color: #2ecc71; resize: vertical; }
-.version-badge { background: #e67e22; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+.template-item img { 
+    width: 24px; 
+    height: 24px; 
+    object-fit: contain; 
+    border: 1px solid #ccc; 
+    background: #fff; 
+    border-radius: 4px;
+}
+.color-badge { 
+    width: 12px; 
+    height: 12px; 
+    border-radius: 50%; 
+    display: inline-block; 
+}
 
-/* 複製成功提示文字樣式 */
+select, input[type="text"], input[type="number"] { 
+    padding: 6px 10px; 
+    border-radius: 4px; 
+    border: 1px solid #475569; 
+    font-size: var(--base-font-size); 
+    background: #0f172a; 
+    color: #f8fafc;
+    outline: none;
+}
+select:focus, input:focus { border-color: #f59e0b; }
+
+.toolbar { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    margin-bottom: 10px; 
+    background: #0f172a; 
+    padding: 10px 12px; 
+    border-radius: 6px; 
+    border: 1px solid #334155;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.version-badge { 
+    background: #10b981; 
+    color: white; 
+    padding: 2px 8px; 
+    border-radius: 4px; 
+    font-size: calc(var(--base-font-size) * 0.8); 
+    font-weight: bold; 
+}
+
 #copyTip {
     display: inline-block;
     margin-left: 8px;
-    font-size: 13px;
+    font-size: calc(var(--base-font-size) * 0.9);
     font-weight: bold;
-    color: #27ae60;
+    color: #34d399;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
-#copyTip.show {
-    opacity: 1;
+#copyTip.show { opacity: 1; }
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.85);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
 }
+.modal-content {
+    background: #1e293b;
+    border: 1px solid #475569;
+    padding: 20px;
+    border-radius: 8px;
+    width: 440px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.candidate-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.candidate-card:hover { border-color: #64748b; }
+.candidate-card.selected {
+    border-color: #f59e0b;
+    background: #334155;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #334155;
+    margin-bottom: 10px;
+}
+.form-group { margin-bottom: 8px; }
+.form-label { font-size: calc(var(--base-font-size) * 0.8); font-weight: bold; color: #cbd5e1; margin-bottom: 4px; display: block; }
+.form-input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: calc(var(--base-font-size) * 0.85);
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    outline: none;
+}
+.form-input:focus { border-color: #f59e0b; }
+
+.current-attr-box {
+    background: #111827;
+    border: 1px solid #374151;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+}
+.current-attr-badge {
+    font-size: calc(var(--base-font-size) * 0.85);
+    font-weight: bold;
+    color: #ffffff;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+}
+.picker-t-btn {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    padding: 6px 4px;
+    font-size: calc(var(--base-font-size) * 0.8);
+    font-weight: bold;
+    color: #ffffff;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    opacity: 0.85;
+}
+.picker-t-btn:hover { opacity: 1; transform: translateY(-1px); }
+.picker-t-btn.active {
+    opacity: 1;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    transform: scale(1.02);
+}
+.action-btn-group {
+    display: flex;
+    gap: 6px;
+    margin-top: 15px;
+}
+.btn-action {
+    flex: 1;
+    border: none;
+    padding: 8px 4px;
+    border-radius: 4px;
+    font-size: calc(var(--base-font-size) * 0.85);
+    font-weight: bold;
+    cursor: pointer;
+}
+.btn-action:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>桃太郎電鐵地圖數據導出編輯器 <span class="version-badge">地圖自動辨識 V6.1</span></h2>
-    <div class="row">
-        <div class="col">
-            <label><b>大地圖圖片：</b></label><br>
-            <input type="file" id="uploadMap" accept="image/*">
-        </div>
-        <div class="col">
-            <label><b>批次上傳小圖案 (支援智慧關鍵字)：</b></label><br>
-            <input type="file" id="uploadTemplates" accept="image/*" multiple>
+<div class="box" style="border-left: 4px solid #38bdf8;">
+    <div class="section-header">
+        <h2>桃太郎電鐵地圖數據導出編輯器 <span class="version-badge">V7.13 (縮放按鈕優化)</span></h2>
+        <span id="result" class="status-tip">✨ 初始化完成，請開始上傳大地圖與圖案</span>
+        
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <button class="btn" id="togglePanelBtn" style="background: #0284c7; color: white; padding: 6px 12px;" onclick="toggleConfigPanel()">🔼 收起設定區</button>
+            <button class="btn" style="background: #e11d48; color: white; padding: 6px 12px;" onclick="resetAllWebsite()">🔄 全部重來</button>
+            
+            <div style="display: flex; align-items: center; gap: 6px; color: #cbd5e1; border-left: 1px solid #334155; padding-left: 12px;" onwheel="handleFontWheel(event)">
+                <span>字體:</span>
+                <button class="btn" style="padding: 2px 8px; background: #475569; color: white;" onclick="adjustFontSize(-2)">-</button>
+                <input type="range" id="fontSizeRange" min="12" max="28" step="2" value="20" oninput="setFontSize(this.value)" style="cursor: pointer; width: 80px; accent-color: #f59e0b;" title="可在此處滾動滑鼠滾輪調整字體">
+                <button class="btn" style="padding: 2px 8px; background: #475569; color: white;" onclick="adjustFontSize(2)">+</button>
+                <button class="btn" style="padding: 2px 8px; background: #64748b; color: white;" onclick="resetFontSize()">預設</button>
+                <span id="fontSizeDisplay" style="color: #f59e0b; font-weight: bold; min-width: 45px; text-align: center;">20px</span>
+            </div>
         </div>
     </div>
 
-    <div style="margin-top: 10px;">
-        <label><b>🗺️ 區域名稱 (Region)：</b></label>
-        <input type="text" id="regionName" value="Okinawa" style="width: 150px;" oninput="syncRegionName(this.value)">
-    </div>
-
-    <div style="margin-top: 15px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-            <b>📦 圖塊樣板庫與辨識門檻：</b>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <!-- 💡 線上圖庫選單 (預設空白，不自動載入) -->
-                <label style="font-size: 12px; font-weight: bold;">📂 選擇圖庫：</label>
-                <select id="presetLibrarySelect" onchange="loadPresetLibrary(this.value)" style="padding: 4px 8px; font-size: 12px;">
-                    <option value="" selected disabled>-- 請選擇線上圖庫包 --</option>
-                    <option value="templates_1.json">桃鐵1-標準圖庫 (templates.json)</option>
-                    <option value="templates_2.json">備用圖庫2 (templates_alt.json)</option>
-                    <option value="templates_3.json">備用圖庫3 (templates_custom.json)</option>
-                </select>
-
-                <button class="clear-btn" style="margin:0; padding:4px 8px; font-size:12px; background:#c0392b;" onclick="clearTemplateLibrary()">🗑️ 清空圖庫</button>
-                <button class="export-btn" style="margin:0; padding:4px 10px; font-size:12px;" onclick="exportTemplateLibrary()">💾 匯出圖庫</button>
-                <label class="import-btn" style="display:inline-block; margin:0; padding:4px 10px; background:#8e44ad; color:white; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;">
-                    📥 本地匯入
-                    <input type="file" id="importTemplatesFile" accept=".json" style="display:none;" onchange="importTemplateLibrary(event)">
+    <!-- 可隱藏/展開的設定主內容區塊 -->
+    <div id="collapsibleConfigContent">
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; margin-top: 12px;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    <label><b>上傳大地圖：</b></label>
+                    <span id="mapFileName" class="file-status-text">尚未選擇檔案</span>
+                </div>
+                <label class="file-upload-btn">
+                    📤 選擇大地圖檔案...
+                    <input type="file" id="uploadMap" accept="image/*" style="display: none;">
+                </label>
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    <label><b>上傳要辨識的小圖案 (可批次上傳，支援智慧關鍵字)：</b></label>
+                    <span id="templatesFileName" class="file-status-text">尚未選擇檔案</span>
+                </div>
+                <label class="file-upload-btn">
+                    📂 選擇小圖案檔案...
+                    <input type="file" id="uploadTemplates" accept="image/*" multiple="" style="display: none;">
                 </label>
             </div>
         </div>
-        <div id="templateList">
-            <i style="color: #888;">尚未上傳或載入任何圖塊...</i>
+
+        <div class="row" style="margin-top: 10px;">
+            <div>
+                <label><b>區域名稱：</b></label>
+                <input type="text" id="regionName" value="Okinawa" style="width: 180px;" oninput="syncRegionName(this.value)">
+            </div>
+        </div>
+
+        <!-- 圖塊模板與圖庫功能區塊 -->
+        <div style="margin-top: 15px;">
+            <div style="margin-bottom: 8px;">
+                <b>圖案樣本與辨識門檻匹配度：</b>
+            </div>
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-weight: bold;">選擇圖庫：</label>
+                    <select id="presetLibrarySelect" onchange="loadPresetLibrary(this.value)">
+                        <option value="" selected="" disabled="">-- 請選擇線上圖庫包 --</option>
+                        <option value="templates_1.json">桃鐵1-標準圖庫 (templates.json)</option>
+                        <option value="templates_2.json">備用圖庫2 (templates_alt.json)</option>
+                        <option value="templates_3.json">備用圖庫3 (templates_custom.json)</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button class="btn" style="background:#8b5cf6; color:white;" onclick="openKeywordModal()">⚙️ 設定智慧關鍵字</button>
+                    <button class="btn" style="background:#ef4444; color:white;" onclick="clearTemplateLibrary()">🗑️ 清空</button>
+                    <button class="btn" style="background:#0284c7; color:white;" onclick="exportTemplateLibrary()">💾 匯出</button>
+                    
+                    <label class="btn" style="background:#10b981; color:white; cursor:pointer; margin:0;">
+                        📥 匯入
+                        <input type="file" id="importTemplatesFile" accept=".json" style="display:none;" onchange="importTemplateLibrary(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div id="templateList"><i style="color: #94a3b8;">尚未上傳或載入任何圖塊...</i></div>
+        </div>
+
+        <div class="row" style="margin-top: 15px;">
+            <button class="btn" id="matchBtn" style="background:#059669; color:white; padding: 12px 22px;">🔍 執行自動辨識與網格編碼 (Y軸向上)</button>
+            <button class="btn" style="background:#dc2626; color:white; padding: 12px 22px;" onclick="clearResults()">🧹 清除辨識結果</button>
+        </div>
+    </div>
+</div>
+
+<!-- 視覺化預覽與 JSON 輸出按鈕整合區 -->
+<div class="box flex-fill" id="previewBox">
+    <div class="section-header">
+        <h3>2. 視覺化座標網格預覽檢視與數據導出</h3>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button class="btn" style="background: #2563eb; color: white;" onclick="copyJson()">📋 複製 JSON</button>
+            <button class="btn" style="background: #16a34a; color: white;" onclick="downloadJsonFile()">💾 下載 JSON</button>
+            <span id="copyTip">已複製！✓</span>
         </div>
     </div>
 
-    <div style="margin-top: 15px;">
-        <button id="matchBtn">🔍 執行自動辨識與網格編碼 (Y軸向上)</button>
-        <button class="clear-btn" onclick="clearResults()">🧹 清除畫布</button>
-    </div>
-    <div id="result" style="margin-top: 10px; font-weight: bold; color: #2c3e50;"></div>
-</div>
-
-<div class="card">
-    <h3>2. 視覺化座標網格預覽檢視 (Y軸向上遞增)</h3>
+    <!-- 工具列 -->
     <div class="toolbar">
-        <label><b>🔍 畫布縮放控制：</b></label>
-        <input type="range" id="zoomRange" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateZoom(this.value)">
-        <span id="zoomVal" style="font-weight: bold; color: #2980b9; min-width: 45px;">100%</span>
-        <button style="margin:0; padding:4px 10px; background:#7f8c8d;" onclick="resetZoom()">重置大小 (100%)</button>
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn mode-btn active" id="btnModePan" onclick="switchInteractionMode('pan')">🖱️ 檢視平移</button>
+            <button class="btn mode-btn" id="btnModeDraw" onclick="switchInteractionMode('draw')">➕ 框選新增</button>
+            <button class="btn mode-btn" id="btnModeEdit" onclick="switchInteractionMode('edit')">⚙️ 編輯圖塊</button>
+            <button class="btn mode-btn" id="btnModeDelete" onclick="switchInteractionMode('delete')">🗑️ 刪除圖塊</button>
+        </div>
+
+        <!-- 縮放控制：加上加減按鈕，移除多餘的 z -->
+        <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid #334155; padding-left: 12px;">
+            <label><b>🔍 縮放：</b></label>
+            <button class="btn" style="background:#475569; color:white; padding: 2px 8px;" onclick="adjustZoom(-0.1)">-</button>
+            <input type="range" id="zoomRange" min="0.5" max="3.0" step="0.1" value="1.0" oninput="updateZoom(parseFloat(this.value))" style="width: 70px; accent-color: #f59e0b;">
+            <button class="btn" style="background:#475569; color:white; padding: 2px 8px;" onclick="adjustZoom(0.1)">+</button>
+            <span id="zoomVal" style="font-weight: bold; color: #f59e0b; min-width: 45px; text-align: center;">100%</span>
+            <button class="btn" style="background:#64748b; color:white; padding: 4px 8px;" onclick="resetZoom()">重置</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px; border-left: 1px solid #334155; padding-left: 12px;">
+            <label><b>🎯 篩選：</b></label>
+            <select id="layerFilterSelect" onchange="drawCanvas()" style="width: auto;"><option value="all">🌐 顯示全部</option></select>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; border-left: 1px solid #334155; padding-left: 12px; flex-wrap: wrap;">
+            <span style="font-weight: bold; color: #cbd5e1;">圖層：</span>
+            <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: #0f172a; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">
+                <input type="checkbox" id="layerBox" checked="" onchange="drawCanvas()" style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer;"> 🟩 外框
+            </label>
+            <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: #0f172a; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">
+                <input type="checkbox" id="layerAttr" onchange="drawCanvas()" style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer;"> 🏷️ 屬性
+            </label>
+            <label style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: #0f172a; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">
+                <input type="checkbox" id="layerCoord" onchange="drawCanvas()" style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer;"> 📍 座標
+            </label>
+        </div>
     </div>
     
-    <div class="canvas-container" id="canvasContainer">
-        <canvas id="resultCanvas"></canvas>
+    <div class="canvas-container " id="canvasContainer" onmousedown="onCanvasMouseDown(event)" onmousemove="onCanvasMouseMove(event)" onmouseup="onCanvasMouseUp(event)" onmouseleave="onCanvasMouseUp(event)" onwheel="onCanvasWheel(event)">
+        <div id="canvasTransformTarget" style="transform: translate(0px, 0px) scale(1);">
+            <canvas id="resultCanvas" width="300" height="150"></canvas>
+            <div id="selectionBox" style="position: absolute; border: 2px dashed #f59e0b; background: rgba(245, 158, 11, 0.2); display: none; pointer-events: none;"></div>
+        </div>
     </div>
 </div>
 
-<div class="card">
-    <h3>3. Tool2 V54 標準 JSON 輸出區</h3>
-    <div style="margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap;">
-        <button class="export-btn" style="background: #8e44ad;" onclick="copyJson()">📋 複製 JSON 數據</button>
-        <!-- 💡 新增的直接下載 JSON 按鈕 -->
-        <button class="export-btn" onclick="downloadJsonFile()">💾 下載 JSON 檔</button>
-        <span id="copyTip">已複製成功！✓</span>
+<!-- ================= 彈出視窗：框選新增與前三種候選比對 ================= -->
+<div id="addNodeModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 8px; margin-bottom: 12px;">
+            <h3 style="margin:0;">➕ 框選新增與前三大熱門匹配</h3>
+            <button class="btn" style="background:#ef4444; color:white; padding: 2px 8px;" onclick="closeAddModal()">✕</button>
+        </div>
+
+        <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 12px; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">
+            <div>
+                <canvas id="addCropCanvas" width="50" height="50" style="border: 2px solid #f59e0b; border-radius: 4px; background: #fff; display: block; object-fit: contain;"></canvas>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: calc(var(--base-font-size) * 0.9); color: #f59e0b; font-weight: bold;">📷 框選區域預覽</span>
+                <span style="font-size: calc(var(--base-font-size) * 0.8); color: #94a3b8;">請從下方挑選最符合的圖塊（支援 0.6 門檻）</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <label class="form-label" style="margin-bottom: 6px;">🎯 前三大匹配可能性（點擊可切換選取）：</label>
+            <div id="candidateListContainer" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
+        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+            <label><b>網格座標 (gx, gy)：</b></label>
+            <input type="number" id="newNodeGxModal" value="0" style="width: 80px;">
+            <input type="number" id="newNodeGyModal" value="0" style="width: 80px;">
+            <span style="font-size: calc(var(--base-font-size) * 0.85); color: #facc15;">(自動 +1 推擠)</span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #334155; padding-top: 12px;">
+            <button class="btn" style="background:#64748b; color:white;" onclick="closeAddModal()">取消</button>
+            <button class="btn" style="background:#059669; color:white;" onclick="confirmAddNodeModal()">✓ 確認新增並推擠</button>
+        </div>
     </div>
-    <textarea id="jsonOutput" placeholder="自動生成的 V54 JSON 數據將會顯示在此處供您複製..."></textarea>
+</div>
+
+<!-- ================= 彈出視窗 2：精簡版刪除節點確認 ================= -->
+<div id="deleteNodeModal" class="modal" style="display: none;">
+    <div class="modal-content" style="border-color: #ef4444; width: 360px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 8px; margin-bottom: 10px;">
+            <h3 style="margin:0; color: #ef4444; font-size: calc(var(--base-font-size) * 0.95);">🗑️ 刪除節點確認</h3>
+            <button class="btn" style="background:#ef4444; color:white; padding: 2px 6px;" onclick="closeDeleteModal()">✕</button>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px; background: #0f172a; padding: 8px; border-radius: 6px; border: 1px solid #334155;">
+            <canvas id="deleteCropCanvas" width="40" height="40" style="border: 1px solid #ef4444; border-radius: 4px; background: #fff; display: block; object-fit: contain;"></canvas>
+            <span id="deleteNodeInfoModal" style="font-size: calc(var(--base-font-size) * 0.85); color: #f8fafc; font-weight: bold;">-</span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 6px; border-top: 1px solid #334155; padding-top: 10px;">
+            <button class="btn" style="background:#64748b; color:white; padding: 6px 12px;" onclick="closeDeleteModal()">取消</button>
+            <button class="btn" style="background:#ef4444; color:white; padding: 6px 12px;" onclick="confirmDeleteNodeModal()">確定刪除</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= ⚙️ 完整編輯圖塊彈窗 ================= -->
+<div id="attrPickerModal" class="modal" style="display: none;">
+    <div class="modal-content" style="background: #1e1e1e; color: #f1f5f9; border: 1px solid #334155;">
+        <div class="picker-header">
+            <h3 id="pickerHeaderTitle" style="margin:0; font-size: calc(var(--base-font-size) * 0.95);">⚙️ 編輯左側圖塊屬性</h3>
+            <button class="btn" style="background:#64748b; color:white; padding: 2px 8px;" onclick="closeNodeEditModal()">✕</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">🏷️ 編輯車站名稱：</label>
+            <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+                <input type="text" id="pickerLabelInput" class="form-input" placeholder="中文站名">
+                <input type="text" id="pickerJpnameInput" class="form-input" placeholder="日文站名">
+            </div>
+        </div>
+
+        <div class="current-attr-box">
+            <span style="font-size: calc(var(--base-font-size) * 0.8); font-weight: bold; color: #94a3b8;">📌 目前屬性：</span>
+            <span class="current-attr-badge bg-normal" id="pickerCurrentAttrDisplay">🟣 車站</span>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 10px 0;">
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px;">
+            <label class="form-label" style="margin:0;">🎨 圖塊類型：</label>
+            <select id="pickerTypeSelect" class="form-input" style="width: auto; flex:1;" onchange="onPickerDropdownChange(this.value)">
+                <option value="" disabled="" selected="">-- 選擇其他圖塊 ▼ --</option>
+                <option value="copy_station">🖨️ 複製車站</option>
+                <option value="flight_station">✈️ 飛航車站</option>
+                <option value="ship_station">🚢 乘船車站</option>
+                <option value="rail_station">🛤️ 鐵道站</option>
+                <option value="heli_station">🚁 直升機站</option>
+                <option value="reset_station">🔄 重置周遊</option>
+                <option value="good_card">💎 好卡片</option>
+                <option value="special">⚙️ 特殊</option>
+                <option value="monster">👾 名產怪獸</option>
+            </select>
+        </div>
+
+        <div class="type-grid" id="pickerCommonButtonsContainer">
+            <button class="picker-t-btn" style="background: #7c3aed;" id="picker_t_normal" onclick="selectPickerType('normal')">🟣 車站</button>
+            <button class="picker-t-btn" style="background: #3498db;" id="picker_t_blue" onclick="selectPickerType('blue')">🔵 藍格</button>
+            <button class="picker-t-btn" style="background: #e74c3c;" id="picker_t_red" onclick="selectPickerType('red')">🔴 紅格</button>
+            <button class="picker-t-btn" style="background: #f1c40f; color:#0f172a;" id="picker_t_yellow" onclick="selectPickerType('yellow')">🟡 黃格</button>
+            <button class="picker-t-btn" style="background: #16a085;" id="picker_t_card_shop" onclick="selectPickerType('card_shop')">🏪 賣場</button>
+            <button class="picker-t-btn" style="background: #f39c12;" id="picker_t_bank" onclick="selectPickerType('bank')">🏦 銀行</button>
+        </div>
+
+        <button id="btnTogglePickerMore" style="background: #374151; color: #f8fafc; border: 1px solid #4b5563; width: 100%; padding: 6px; font-size: calc(var(--base-font-size) * 0.8); margin-top: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick="togglePickerMoreTypes()">
+            ➕ 展開其餘 9 種圖塊類型
+        </button>
+
+        <div id="pickerMoreButtonsContainer" style="display: none;" class="type-grid">
+            <button class="picker-t-btn" style="background: #34495e;" id="picker_t_copy_station" onclick="selectPickerType('copy_station')">🖨️ 複製</button>
+            <button class="picker-t-btn" style="background: #00a8ff;" id="picker_t_flight_station" onclick="selectPickerType('flight_station')">✈️ 飛航</button>
+            <button class="picker-t-btn" style="background: #1e272c;" id="picker_t_ship_station" onclick="selectPickerType('ship_station')">🚢 乘船</button>
+            <button class="picker-t-btn" style="background: #27ae60;" id="picker_t_rail_station" onclick="selectPickerType('rail_station')">🛤️ 鐵道</button>
+            <button class="picker-t-btn" style="background: #d35400;" id="picker_t_heli_station" onclick="selectPickerType('heli_station')">🚁 直升機</button>
+            <button class="picker-t-btn" style="background: #e67e22;" id="picker_t_reset_station" onclick="selectPickerType('reset_station')">🔄 重置</button>
+            <button class="picker-t-btn" style="background: #e84393;" id="picker_t_good_card" onclick="selectPickerType('good_card')">💎 好卡</button>
+            <button class="picker-t-btn" style="background: #95a5a6;" id="picker_t_special" onclick="selectPickerType('special')">⚙️ 特殊</button>
+            <button class="picker-t-btn" style="background: #c0392b;" id="picker_t_monster" onclick="selectPickerType('monster')">👾 怪獸</button>
+        </div>
+
+        <div class="action-btn-group">
+            <button class="btn-action" style="background:#0284c7; color:white;" onclick="saveNodeEdit()">💾 儲存修改</button>
+            <button class="btn-action" style="background:#ef4444; color:white;" onclick="deleteCurrentNodeFromModal()">🗑️ 刪除圖塊</button>
+            <button class="btn-action" style="background:#64748b; color:white;" onclick="closeNodeEditModal()">❌ 取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 關鍵字設定互動視窗 -->
+<div id="keywordModal" class="modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; padding-bottom: 8px; margin-bottom: 12px;">
+            <h3 style="margin:0;">⚙️ 自動辨識智慧關鍵字規則設定</h3>
+            <button class="btn" style="background:#ef4444; color:white; padding: 2px 8px;" onclick="closeKeywordModal()">✕</button>
+        </div>
+        <div style="font-size: calc(var(--base-font-size) * 0.9); color: #94a3b8; margin-bottom: 10px;">
+            在此管理檔名關鍵字：
+        </div>
+        <div id="keywordEditorList" style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
+        
+        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px solid #334155; padding-top: 12px;">
+            <div style="display: flex; gap: 6px;">
+                <button class="btn" style="background:#0284c7; color:white;" onclick="exportKeywordRules()">💾 導出</button>
+                <label class="btn" style="background:#0d9488; color:white; cursor:pointer; margin:0;">
+                    📥 導入
+                    <input type="file" id="importKeywordFile" accept=".json" style="display:none;" onchange="importKeywordRules(event)">
+                </label>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn" style="background:#64748b; color:white;" onclick="resetDefaultKeywords()">恢復預設</button>
+                <button class="btn" style="background:#059669; color:white;" onclick="saveKeywordRules()">儲存設定</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -161,85 +683,661 @@ let currentNodes = [];
 let blockedConnections = []; 
 let regionNameVal = "Okinawa";
 let currentZoom = 1.0;
+let currentFontSize = 20;
+
+let interactionMode = "pan"; // "pan", "draw", "edit", "delete"
+let panState = { isPanning: false, startX: 0, startY: 0, panX: 0, panY: 0 };
+let drawState = { isDrawing: false, startX: 0, startY: 0, endX: 0, endY: 0 };
+
+let pendingNewNode = null;
+let selectedTemplateCandidate = null; 
+let hoveredNodeIndex = -1;
+let selectedDeleteNodeIndex = -1;
 
 const v61Attributes = {
-    normal: { label: "🟣 車站", color: "#8e44ad" },
-    blue: { label: "🔵 藍格", color: "#3498db" },
-    red: { label: "🔴 紅格", color: "#e74c3c" },
-    yellow: { label: "🟡 黃格", color: "#f1c40f" },
-    card_shop: { label: "🏪 卡片賣場", color: "#16a085" },
-    copy_station: { label: "🖨️ 複製車站", color: "#34495e" },
-    flight_station: { label: "✈️ 飛航車站", color: "#00a8ff" },
-    ship_station: { label: "🚢 乘船車站", color: "#1e272c" },
-    rail_station: { label: "🛤️ 鐵道站", color: "#27ae60" },
-    heli_station: { label: "🚁 直升機站", color: "#d35400" },
-    reset_station: { label: "🔄 重置周遊", color: "#e67e22" },
-    good_card: { label: "💎 好卡片車站", color: "#e84393" },
-    bank: { label: "🏦 銀行車站", color: "#f39c12" },
-    special: { label: "⚙️ 特殊", color: "#95a5a6" },
-    monster: { label: "👾 名產怪獸", color: "#c0392b" }
+    normal: { label: "🟣 車站", color: "#8e44ad", short: "車站", icon: "🟣" },
+    blue: { label: "🔵 藍格", color: "#3498db", short: "藍格", icon: "🔵" },
+    red: { label: "🔴 紅格", color: "#e74c3c", short: "紅格", icon: "🔴" },
+    yellow: { label: "🟡 黃格", color: "#f1c40f", short: "黃格", icon: "🟡" },
+    card_shop: { label: "🏪 卡片賣場", color: "#16a085", short: "賣場", icon: "🏪" },
+    copy_station: { label: "🖨️ 複製車站", color: "#34495e", short: "複製", icon: "🖨️" },
+    flight_station: { label: "✈️ 飛航車站", color: "#00a8ff", short: "飛航", icon: "✈️" },
+    ship_station: { label: "🚢 乘船車站", color: "#1e272c", short: "乘船", icon: "🚢" },
+    rail_station: { label: "🛤️ 鐵道站", color: "#27ae60", short: "鐵道", icon: "🛤️" },
+    heli_station: { label: "🚁 直升機站", color: "#d35400", short: "直升", icon: "🚁" },
+    reset_station: { label: "🔄 重置周遊", color: "#e67e22", short: "重置", icon: "🔄" },
+    good_card: { label: "💎 好卡片車站", color: "#e84393", short: "好卡", icon: "💎" },
+    bank: { label: "🏦 銀行車站", color: "#f39c12", short: "銀行", icon: "🏦" },
+    special: { label: "⚙️ 特殊", color: "#95a5a6", short: "特殊", icon: "⚙️" },
+    monster: { label: "👾 名產怪獸", color: "#c0392b", short: "怪獸", icon: "👾" }
 };
 
-// 💡 透過下拉選單切換載入指定的圖庫檔案
+let currentEditingNodeIndex = -1;
+let tempSelectedType = 'normal';
+
+let defaultKeywordRules = {
+    good_card: "good,好卡,good_card",
+    card_shop: "card,卡片,賣場",
+    blue: "blue,藍",
+    red: "red,紅",
+    yellow: "yellow,黃",
+    copy_station: "copy,複製",
+    flight_station: "flight,飛航,機場",
+    ship_station: "ship,乘船,港口",
+    rail_station: "rail,鐵道",
+    heli_station: "heli,直升機",
+    reset_station: "reset,重置",
+    bank: "bank,銀行",
+    special: "special,特殊",
+    monster: "monster,怪獸,名產"
+};
+
+let keywordRules = JSON.parse(localStorage.getItem("momotaro_keyword_rules")) || {...defaultKeywordRules};
+
+function toggleConfigPanel() {
+    let content = document.getElementById('collapsibleConfigContent');
+    let btn = document.getElementById('togglePanelBtn');
+    let previewBox = document.getElementById('previewBox');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        btn.innerText = '🔼 收起設定區';
+        previewBox.style.height = 'auto';
+    } else {
+        content.style.display = 'none';
+        btn.innerText = '🔽 展開設定區';
+        previewBox.style.height = 'calc(100vh - 80px)';
+    }
+}
+
+function autoDetectAttribute(filename) {
+    let lower = filename.toLowerCase();
+    for (let [attr, keywordsStr] of Object.entries(keywordRules)) {
+        let keywords = keywordsStr.split(',').map(k => k.trim().toLowerCase());
+        if (keywords.some(kw => kw && lower.includes(kw))) return attr;
+    }
+    return "normal";
+}
+
+function setFontSize(size) {
+    currentFontSize = parseInt(size);
+    if (currentFontSize < 12) currentFontSize = 12;
+    if (currentFontSize > 28) currentFontSize = 28;
+    document.documentElement.style.setProperty('--base-font-size', currentFontSize + 'px');
+    let rangeEl = document.getElementById('fontSizeRange');
+    let dispEl = document.getElementById('fontSizeDisplay');
+    if (rangeEl) rangeEl.value = currentFontSize;
+    if (dispEl) dispEl.innerText = currentFontSize + 'px';
+}
+function handleFontWheel(event) {
+    event.preventDefault();
+    setFontSize(currentFontSize + (event.deltaY < 0 ? 2 : -2));
+}
+function adjustFontSize(delta) { setFontSize(currentFontSize + delta); }
+function resetFontSize() { setFontSize(20); }
+
+function switchInteractionMode(mode) {
+    interactionMode = mode;
+    document.getElementById('btnModePan').classList.toggle('active', mode === 'pan');
+    document.getElementById('btnModeDraw').classList.toggle('active', mode === 'draw');
+    let editBtn = document.getElementById('btnModeEdit');
+    if (editBtn) editBtn.classList.toggle('active', mode === 'edit');
+    document.getElementById('btnModeDelete').classList.toggle('active', mode === 'delete');
+
+    let container = document.getElementById('canvasContainer');
+    container.className = "canvas-container " + (mode === 'pan' ? '' : (mode === 'draw' ? 'drawing' : (mode === 'edit' ? 'editing' : 'deleting')));
+
+    closeAddModal();
+    closeDeleteModal();
+    closeNodeEditModal();
+    drawCanvas();
+}
+
+function updateFilterOptions() {
+    let select = document.getElementById('layerFilterSelect');
+    let currentVal = select.value;
+    let html = '<option value="all">🌐 顯示全部</option>';
+    let uniqueAttrs = [...new Set(currentNodes.map(n => n.tpl.attribute))];
+    uniqueAttrs.forEach(attr => {
+        let conf = v61Attributes[attr] || { label: attr };
+        html += `<option value="${attr}">${conf.label}</option>`;
+    });
+    select.innerHTML = html;
+    select.value = uniqueAttrs.includes(currentVal) ? currentVal : 'all';
+}
+
+function getCanvasEventCoords(e) {
+    let canvas = document.getElementById('resultCanvas');
+    let rect = canvas.getBoundingClientRect();
+    let clientX = e.clientX - rect.left;
+    let clientY = e.clientY - rect.top;
+    return {
+        x: Math.round(clientX / currentZoom),
+        y: Math.round(clientY / currentZoom)
+    };
+}
+
+function findNodeAt(x, y) {
+    let exactHit = currentNodes.findIndex(n => x >= n.x - 4 && x <= n.x + n.tw + 4 && y >= n.y - 4 && y <= n.y + n.th + 4);
+    if (exactHit !== -1) return exactHit;
+
+    let closestIdx = -1;
+    let minDst = 20;
+    currentNodes.forEach((n, idx) => {
+        let cx = n.x + n.tw / 2;
+        let cy = n.y + n.th / 2;
+        let dst = Math.hypot(x - cx, y - cy);
+        if (dst < minDst) {
+            minDst = dst;
+            closestIdx = idx;
+        }
+    });
+    return closestIdx;
+}
+
+function onCanvasMouseDown(e) {
+    if (e.button !== 0) return;
+    let coords = getCanvasEventCoords(e);
+
+    if (interactionMode === 'pan') {
+        panState.isPanning = true;
+        panState.startX = e.clientX - panState.panX;
+        panState.startY = e.clientY - panState.panY;
+        document.getElementById('canvasContainer').classList.add('panning');
+    } else if (interactionMode === 'draw') {
+        if (!mapImg) return;
+        drawState.isDrawing = true;
+        drawState.startX = coords.x;
+        drawState.startY = coords.y;
+        drawState.endX = coords.x;
+        drawState.endY = coords.y;
+        updateSelectionBoxUI();
+    } else if (interactionMode === 'edit') {
+        let hitIdx = findNodeAt(coords.x, coords.y);
+        if (hitIdx !== -1) openNodeEditModal(hitIdx);
+    } else if (interactionMode === 'delete') {
+        let hitIdx = findNodeAt(coords.x, coords.y);
+        if (hitIdx !== -1) {
+            selectedDeleteNodeIndex = hitIdx;
+            openDeleteModal(hitIdx);
+        }
+    }
+}
+
+function onCanvasMouseMove(e) {
+    let coords = getCanvasEventCoords(e);
+    if (interactionMode === 'pan' && panState.isPanning) {
+        panState.panX = e.clientX - panState.startX;
+        panState.panY = e.clientY - panState.startY;
+        updateCanvasTransform();
+    } else if (interactionMode === 'draw' && drawState.isDrawing) {
+        drawState.endX = coords.x;
+        drawState.endY = coords.y;
+        updateSelectionBoxUI();
+    } else if (interactionMode === 'edit' || interactionMode === 'delete') {
+        let prevHover = hoveredNodeIndex;
+        hoveredNodeIndex = findNodeAt(coords.x, coords.y);
+        if (prevHover !== hoveredNodeIndex) drawCanvas();
+    }
+}
+
+function onCanvasMouseUp(e) {
+    if (interactionMode === 'pan' && panState.isPanning) {
+        panState.isPanning = false;
+        document.getElementById('canvasContainer').classList.remove('panning');
+    } else if (interactionMode === 'draw' && drawState.isDrawing) {
+        drawState.isDrawing = false;
+        document.getElementById('selectionBox').style.display = 'none';
+
+        let x = Math.min(drawState.startX, drawState.endX);
+        let y = Math.min(drawState.startY, drawState.endY);
+        let w = Math.abs(drawState.endX - drawState.startX);
+        let h = Math.abs(drawState.endY - drawState.startY);
+
+        if (w < 5 || h < 5) {
+            w = templateLibrary.length > 0 ? templateLibrary[0].width : 24;
+            h = templateLibrary.length > 0 ? templateLibrary[0].height : 24;
+            x -= w / 2;
+            y -= h / 2;
+        }
+
+        openAddModalWithTop3(x, y, w, h);
+    }
+}
+
+function updateSelectionBoxUI() {
+    let box = document.getElementById('selectionBox');
+    let x = Math.min(drawState.startX, drawState.endX) * currentZoom;
+    let y = Math.min(drawState.startY, drawState.endY) * currentZoom;
+    let w = Math.abs(drawState.endX - drawState.startX) * currentZoom;
+    let h = Math.abs(drawState.endY - drawState.startY) * currentZoom;
+
+    box.style.left = x + 'px';
+    box.style.top = y + 'px';
+    box.style.width = w + 'px';
+    box.style.height = h + 'px';
+    box.style.display = 'block';
+}
+
+function findTop3MatchingTemplates(cropCanvas) {
+    if (templateLibrary.length === 0) return [];
+    let tw_c = cropCanvas.width;
+    let th_c = cropCanvas.height;
+    let cropCtx = cropCanvas.getContext('2d');
+    let sampleData = cropCtx.getImageData(0, 0, tw_c, th_c).data;
+
+    let results = [];
+    templateLibrary.forEach(tpl => {
+        let tw = tpl.width;
+        let th_h = tpl.height;
+        let tData = tpl.data;
+
+        let tempC = document.createElement('canvas');
+        tempC.width = tw; tempC.height = th_h;
+        let tempCtx = tempC.getContext('2d');
+        tempCtx.drawImage(cropCanvas, 0, 0, tw, th_h);
+        let resizedSampleData = tempCtx.getImageData(0, 0, tw, th_h).data;
+
+        let totalDiff = 0, sampleCount = 0;
+        for (let ty = 0; ty < th_h; ty += 2) {
+            for (let tx = 0; tx < tw; tx += 2) {
+                let idx = (ty * tw + tx) * 4;
+                totalDiff += (Math.abs(resizedSampleData[idx] - tData[idx]) + Math.abs(resizedSampleData[idx+1] - tData[idx+1]) + Math.abs(resizedSampleData[idx+2] - tData[idx+2])) / 3;
+                sampleCount++;
+            }
+        }
+        let similarity = 1 - ((totalDiff / sampleCount) / 255);
+        if (similarity >= 0.60) {
+            results.push({ template: tpl, similarity: similarity });
+        }
+    });
+
+    results.sort((a, b) => b.similarity - a.similarity);
+    return results.slice(0, 3);
+}
+
+function openAddModalWithTop3(x, y, w, h) {
+    pendingNewNode = { x, y, tw: w, th: h };
+    
+    let cropCanvas = document.getElementById('addCropCanvas');
+    let cropCtx = cropCanvas.getContext('2d');
+    cropCanvas.width = Math.max(w, 20);
+    cropCanvas.height = Math.max(h, 20);
+    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    
+    if (mapImg) {
+        cropCtx.drawImage(mapImg, x, y, w, h, 0, 0, cropCanvas.width, cropCanvas.height);
+    }
+
+    let top3 = findTop3MatchingTemplates(cropCanvas);
+    let container = document.getElementById('candidateListContainer');
+    container.innerHTML = '';
+
+    if (top3.length === 0) {
+        selectedTemplateCandidate = { attribute: "normal", name: "車站" };
+        container.innerHTML = `<div style="padding: 10px; color: #facc15; font-size: calc(var(--base-font-size) * 0.85);">⚠️ 未達 0.6 相似度門檻，預設為：<b>🟣 車站</b></div>`;
+    } else {
+        selectedTemplateCandidate = top3[0].template;
+        top3.forEach((item, index) => {
+            let tpl = item.template;
+            let attrConf = v61Attributes[tpl.attribute] || { label: tpl.attribute, color: "#8e44ad" };
+            let isSelected = (index === 0);
+
+            let card = document.createElement('div');
+            card.className = `candidate-card ${isSelected ? 'selected' : ''}`;
+            card.innerHTML = `
+                <span class="color-badge" style="background: ${attrConf.color}; width: 14px; height: 14px;"></span>
+                <img src="${tpl.img.src}" style="width: 24px; height: 24px; object-fit: contain; background:#fff; border-radius:3px;">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; font-size:calc(var(--base-font-size)*0.85);">${attrConf.label} (${tpl.name})</div>
+                    <div style="font-size:calc(var(--base-font-size)*0.75); color:#34d399;">相似度: ${(item.similarity * 100).toFixed(1)}%</div>
+                </div>
+                <span style="font-size:calc(var(--base-font-size)*0.8); font-weight:bold; color:${isSelected ? '#f59e0b' : '#64748b'};">${isSelected ? '✓ 已選取' : '選擇'}</span>
+            `;
+
+            card.onclick = function() {
+                document.querySelectorAll('.candidate-card').forEach(c => {
+                    c.classList.remove('selected');
+                    c.querySelector('span:last-child').innerText = '選擇';
+                    c.querySelector('span:last-child').style.color = '#64748b';
+                });
+                card.classList.add('selected');
+                card.querySelector('span:last-child').innerText = '✓ 已選取';
+                card.querySelector('span:last-child').style.color = '#f59e0b';
+                selectedTemplateCandidate = tpl;
+            };
+
+            container.appendChild(card);
+        });
+    }
+
+    let targetGx = 0, targetGy = 0;
+    if (currentNodes.length > 0) {
+        let cx = x + w / 2;
+        let cy = y + h / 2;
+        let closestNode = null;
+        let minDistance = Infinity;
+
+        currentNodes.forEach(n => {
+            let ncx = n.x + n.tw / 2;
+            let ncy = n.y + n.th / 2;
+            let dist = Math.hypot(cx - ncx, cy - ncy);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestNode = n;
+            }
+        });
+
+        if (closestNode) {
+            let dx = cx - (closestNode.x + closestNode.tw / 2);
+            let dy = cy - (closestNode.y + closestNode.th / 2);
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                targetGx = closestNode.gx + (dx > 0 ? 1 : -1);
+                targetGy = closestNode.gy;
+            } else {
+                targetGx = closestNode.gx;
+                targetGy = closestNode.gy + (dy < 0 ? 1 : -1);
+            }
+        }
+    }
+
+    document.getElementById('newNodeGxModal').value = targetGx;
+    document.getElementById('newNodeGyModal').value = targetGy;
+    document.getElementById('addNodeModal').style.display = 'flex';
+}
+
+function closeAddModal() {
+    document.getElementById('addNodeModal').style.display = 'none';
+    pendingNewNode = null;
+    selectedTemplateCandidate = null;
+}
+
+function confirmAddNodeModal() {
+    if (!pendingNewNode) return;
+    let attr = selectedTemplateCandidate ? selectedTemplateCandidate.attribute : "normal";
+    let targetGx = parseInt(document.getElementById('newNodeGxModal').value) || 0;
+    let targetGy = parseInt(document.getElementById('newNodeGyModal').value) || 0;
+
+    currentNodes.forEach(node => {
+        if (node.gx >= targetGx) node.gx += 1;
+        if (node.gy >= targetGy && targetGx === node.gx) node.gy += 1;
+    });
+
+    let mockTpl = { attribute: attr, name: selectedTemplateCandidate ? selectedTemplateCandidate.name : attr };
+
+    currentNodes.push({
+        x: pendingNewNode.x,
+        y: pendingNewNode.y,
+        tw: pendingNewNode.tw,
+        th: pendingNewNode.th,
+        tpl: mockTpl,
+        gx: targetGx,
+        gy: targetGy,
+        label: "",
+        jpname: ""
+    });
+
+    closeAddModal();
+    updateFilterOptions();
+    drawCanvas();
+    document.getElementById('result').innerHTML = `✅ 已成功新增節點 (${targetGx}, ${targetGy})！`;
+}
+
+function openDeleteModal(idx) {
+    let node = currentNodes[idx];
+    let attrConf = v61Attributes[node.tpl.attribute] || { label: node.tpl.attribute };
+    document.getElementById('deleteNodeInfoModal').innerText = `[${attrConf.label}] 座標: (${node.gx}, ${node.gy})`;
+
+    let cropCanvas = document.getElementById('deleteCropCanvas');
+    let cropCtx = cropCanvas.getContext('2d');
+    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    if (mapImg) {
+        cropCtx.drawImage(mapImg, node.x, node.y, node.tw, node.th, 0, 0, cropCanvas.width, cropCanvas.height);
+    }
+    document.getElementById('deleteNodeModal').style.display = 'flex';
+    drawCanvas();
+}
+
+function closeDeleteModal() {
+    selectedDeleteNodeIndex = -1;
+    document.getElementById('deleteNodeModal').style.display = 'none';
+    drawCanvas();
+}
+
+function confirmDeleteNodeModal() {
+    if (selectedDeleteNodeIndex < 0 || selectedDeleteNodeIndex >= currentNodes.length) return;
+    let deleted = currentNodes.splice(selectedDeleteNodeIndex, 1)[0];
+
+    currentNodes.forEach(node => {
+        if (node.gx > deleted.gx) node.gx -= 1;
+        if (node.gy > deleted.gy && node.gx === deleted.gx) node.gy -= 1;
+    });
+
+    closeDeleteModal();
+    updateFilterOptions();
+    drawCanvas();
+    document.getElementById('result').innerHTML = `🗑️ 已刪除節點 (${deleted.gx}, ${deleted.gy})。`;
+}
+
+function openNodeEditModal(idx) {
+    currentEditingNodeIndex = idx;
+    let node = currentNodes[idx];
+    if (!node) return;
+
+    let currentAttr = node.tpl.attribute || "normal";
+    tempSelectedType = currentAttr;
+
+    document.getElementById('pickerHeaderTitle').innerText = `⚙️ 編輯圖塊 (${node.gx}, ${node.gy})`;
+    document.getElementById('pickerLabelInput').value = node.label || "";
+    document.getElementById('pickerJpnameInput').value = node.jpname || "";
+
+    updatePickerUI(tempSelectedType);
+    document.getElementById('attrPickerModal').style.display = 'flex';
+}
+
+function closeNodeEditModal() {
+    document.getElementById('attrPickerModal').style.display = 'none';
+    currentEditingNodeIndex = -1;
+}
+
+function selectPickerType(type) {
+    tempSelectedType = type;
+    updatePickerUI(type);
+}
+
+function onPickerDropdownChange(type) {
+    if (type) selectPickerType(type);
+}
+
+function updatePickerUI(type) {
+    let conf = v61Attributes[type] || { label: type, color: "#8e44ad", icon: "🟣" };
+    let badgeEl = document.getElementById('pickerCurrentAttrDisplay');
+    if (badgeEl) {
+        badgeEl.innerText = `${conf.label}`;
+        badgeEl.style.background = conf.color;
+    }
+
+    document.querySelectorAll('.picker-t-btn').forEach(btn => btn.classList.remove('active'));
+    let activeBtn = document.getElementById('picker_t_' + type);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    let selectEl = document.getElementById('pickerTypeSelect');
+    if (selectEl) {
+        if (['copy_station', 'flight_station', 'ship_station', 'rail_station', 'heli_station', 'reset_station', 'good_card', 'special', 'monster'].includes(type)) {
+            selectEl.value = type;
+        } else {
+            selectEl.selectedIndex = 0;
+        }
+    }
+}
+
+function togglePickerMoreTypes() {
+    let container = document.getElementById('pickerMoreButtonsContainer');
+    let btn = document.getElementById('btnTogglePickerMore');
+    if (container.style.display === 'none' || !container.style.display) {
+        container.style.display = 'grid';
+        btn.innerText = '➖ 收納其餘圖塊類型';
+    } else {
+        container.style.display = 'none';
+        btn.innerText = '➕ 展開其餘 9 種圖塊類型';
+    }
+}
+
+function saveNodeEdit() {
+    if (currentEditingNodeIndex < 0 || currentEditingNodeIndex >= currentNodes.length) return;
+    let node = currentNodes[currentEditingNodeIndex];
+    let newLabel = document.getElementById('pickerLabelInput').value.trim();
+    let newJp = document.getElementById('pickerJpnameInput').value.trim();
+
+    node.tpl.attribute = tempSelectedType;
+    node.tpl.name = tempSelectedType;
+    if (newLabel) node.label = newLabel;
+    else delete node.label;
+    if (newJp) node.jpname = newJp;
+    else delete node.jpname;
+
+    closeNodeEditModal();
+    drawCanvas();
+    document.getElementById('result').innerHTML = `✅ 圖塊屬性與名稱已更新！`;
+}
+
+function deleteCurrentNodeFromModal() {
+    if (currentEditingNodeIndex < 0 || currentEditingNodeIndex >= currentNodes.length) return;
+    let deleted = currentNodes.splice(currentEditingNodeIndex, 1)[0];
+    closeNodeEditModal();
+    updateFilterOptions();
+    drawCanvas();
+    document.getElementById('result').innerHTML = `🗑️ 已刪除圖塊 (${deleted.gx}, ${deleted.gy})。`;
+}
+
+function onCanvasWheel(e) {
+    e.preventDefault();
+    let delta = e.deltaY < 0 ? 0.1 : -0.1;
+    updateZoom(Math.max(0.5, Math.min(3.0, currentZoom + delta)));
+}
+
+function updateCanvasTransform() {
+    let target = document.getElementById('canvasTransformTarget');
+    if (target) target.style.transform = `translate(${panState.panX}px, ${panState.panY}px) scale(${currentZoom})`;
+}
+
+function updateZoom(val) {
+    currentZoom = Math.max(0.5, Math.min(3.0, Math.round(val * 10) / 10));
+    document.getElementById('zoomVal').innerText = Math.round(currentZoom * 100) + '%';
+    let range = document.getElementById('zoomRange');
+    if (range) range.value = currentZoom;
+    updateCanvasTransform();
+}
+
+function adjustZoom(delta) {
+    updateZoom(currentZoom + delta);
+}
+
+function resetZoom() {
+    currentZoom = 1.0;
+    panState.panX = 0;
+    panState.panY = 0;
+    updateZoom(1.0);
+}
+
+function openKeywordModal() {
+    let listEl = document.getElementById('keywordEditorList');
+    let html = '';
+    for (let [attr, conf] of Object.entries(v61Attributes)) {
+        if (attr === 'normal') continue;
+        let val = keywordRules[attr] || '';
+        html += `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0f172a; padding: 6px 10px; border-radius: 4px; border: 1px solid #334155;">
+                <span style="font-weight: bold; color: ${conf.color}; min-width: 110px;">${conf.label}</span>
+                <input type="text" id="kw_${attr}" value="${val}" placeholder="例如: red,紅" style="flex: 1;">
+            </div>
+        `;
+    }
+    listEl.innerHTML = html;
+    document.getElementById('keywordModal').style.display = 'flex';
+}
+function closeKeywordModal() { document.getElementById('keywordModal').style.display = 'none'; }
+function saveKeywordRules() {
+    for (let attr of Object.keys(v61Attributes)) {
+        if (attr === 'normal') continue;
+        let input = document.getElementById(`kw_${attr}`);
+        if (input) keywordRules[attr] = input.value.trim();
+    }
+    localStorage.setItem("momotaro_keyword_rules", JSON.stringify(keywordRules));
+    closeKeywordModal();
+    document.getElementById('result').innerHTML = "✅ 智慧關鍵字規則已成功儲存！";
+}
+function resetDefaultKeywords() {
+    keywordRules = {...defaultKeywordRules};
+    localStorage.removeItem("momotaro_keyword_rules");
+    openKeywordModal();
+    document.getElementById('result').innerHTML = "🔄 智慧關鍵字規則已恢復預設！";
+}
+
+function exportKeywordRules() {
+    let jsonStr = JSON.stringify(keywordRules, null, 2);
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
+    let anchor = document.createElement('a');
+    anchor.setAttribute("href", dataStr);
+    anchor.setAttribute("download", `momotaro_keywords.json`);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+}
+
+function importKeywordRules(event) {
+    let file = event.target.files[0];
+    if (!file) return;
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let importedRules = JSON.parse(e.target.result);
+            keywordRules = {...defaultKeywordRules, ...importedRules};
+            localStorage.setItem("momotaro_keyword_rules", JSON.stringify(keywordRules));
+            openKeywordModal();
+            document.getElementById('result').innerHTML = "✅ 成功導入智慧關鍵字規則！";
+        } catch (err) {
+            document.getElementById('result').innerHTML = "❌ 解析關鍵字 JSON 失敗：" + err.message;
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
 function loadPresetLibrary(filename) {
     if (!filename) return;
-    
     document.getElementById('result').innerText = `🔄 正在載入圖庫 (${filename})...`;
-
     fetch(filename)
         .then(response => {
             if (!response.ok) throw new Error(`找不到檔案: ${filename}`);
             return response.json();
         })
         .then(importedData => {
-            if (Array.isArray(importedData)) {
-                loadTemplatesFromData(importedData, filename);
-            } else {
-                throw new Error("格式錯誤：不是有效的圖庫陣列");
-            }
+            if (Array.isArray(importedData)) loadTemplatesFromData(importedData, `線上圖庫 (${filename})`);
+            else throw new Error("格式錯誤");
         })
         .catch(err => {
-            console.warn(err);
             document.getElementById('result').innerHTML = `⚠️ 無法載入「${filename}」，請確認該檔案已上傳至倉庫。`;
         });
 }
 
-// 💡 一鍵清空所有圖庫功能
 function clearTemplateLibrary() {
-    if (templateLibrary.length === 0) {
-        alert("目前圖庫已經是空的！");
-        return;
-    }
-    if (confirm("確定要清空目前所有的圖庫圖塊嗎？")) {
-        templateLibrary = [];
-        renderTemplateList();
-        document.getElementById('presetLibrarySelect').value = "";
-        document.getElementById('result').innerHTML = "🗑️ 已清空圖庫。";
-    }
-}
-
-function autoDetectAttribute(filename) {
-    let lower = filename.toLowerCase();
-    if (lower.includes("good") || lower.includes("好卡") || lower.includes("good_card")) return "good_card";
-    if (lower.includes("card") || lower.includes("卡片") || lower.includes("賣場")) return "card_shop";
-    if (lower.includes("blue") || lower.includes("藍")) return "blue";
-    if (lower.includes("red") || lower.includes("紅")) return "red";
-    if (lower.includes("yellow") || lower.includes("黃")) return "yellow";
-    if (lower.includes("copy") || lower.includes("複製")) return "copy_station";
-    if (lower.includes("flight") || lower.includes("飛航") || lower.includes("機場")) return "flight_station";
-    if (lower.includes("ship") || lower.includes("乘船") || lower.includes("港口")) return "ship_station";
-    if (lower.includes("rail") || lower.includes("鐵道")) return "rail_station";
-    if (lower.includes("heli") || lower.includes("直升機")) return "heli_station";
-    if (lower.includes("reset") || lower.includes("重置")) return "reset_station";
-    if (lower.includes("bank") || lower.includes("銀行")) return "bank";
-    if (lower.includes("special") || lower.includes("特殊")) return "special";
-    if (lower.includes("monster") || lower.includes("怪獸") || lower.includes("名產")) return "monster";
-    return "normal";
+    if (templateLibrary.length === 0) return;
+    templateLibrary = [];
+    renderTemplateList();
+    document.getElementById('presetLibrarySelect').value = "";
+    document.getElementById('templatesFileName').innerText = "尚未選擇檔案";
+    document.getElementById('result').innerHTML = "🗑️ 圖庫已清空。";
 }
 
 document.getElementById('uploadMap').addEventListener('change', function(e) {
     let file = e.target.files[0];
     if (!file) return;
+    let nameSpan = document.getElementById('mapFileName');
+    nameSpan.innerText = `已選擇：${file.name}`;
+    nameSpan.className = "file-status-text";
+    
     let reader = new FileReader();
     reader.onload = function(event) {
         let img = new Image();
@@ -256,6 +1354,9 @@ document.getElementById('uploadMap').addEventListener('change', function(e) {
 document.getElementById('uploadTemplates').addEventListener('change', function(e) {
     let files = e.target.files;
     if (!files || files.length === 0) return;
+    let tNameSpan = document.getElementById('templatesFileName');
+    tNameSpan.innerText = `已選擇 ${files.length} 個檔案`;
+    tNameSpan.className = "file-status-text";
 
     let filesArray = Array.from(files);
     let loadedCount = 0;
@@ -270,26 +1371,21 @@ document.getElementById('uploadTemplates').addEventListener('change', function(e
                 let color = v61Attributes[detectedAttr].color;
 
                 let tCanvas = document.createElement('canvas');
-                tCanvas.width = img.width;
-                tCanvas.height = img.height;
+                tCanvas.width = img.width; tCanvas.height = img.height;
                 let tCtx = tCanvas.getContext('2d');
                 tCtx.drawImage(img, 0, 0);
                 let tData = tCtx.getImageData(0, 0, img.width, img.height).data;
 
                 templateLibrary.push({
-                    name: fileName,
-                    attribute: detectedAttr,
-                    threshold: 0.70,
-                    img: img,
-                    color: color,
-                    data: tData,
-                    width: img.width,
-                    height: img.height
+                    name: fileName, attribute: detectedAttr,
+                    threshold: 0.7, img: img, color: color,
+                    data: tData, width: img.width, height: img.height
                 });
 
                 loadedCount++;
                 if (loadedCount === filesArray.length) {
                     renderTemplateList();
+                    document.getElementById('result').innerHTML = `✅ 成功批次上傳 ${filesArray.length} 個小圖案！`;
                 }
             };
             img.src = event.target.result;
@@ -302,7 +1398,7 @@ document.getElementById('uploadTemplates').addEventListener('change', function(e
 function renderTemplateList() {
     let container = document.getElementById('templateList');
     if (templateLibrary.length === 0) {
-        container.innerHTML = '<i style="color: #888;">尚未上傳或載入任何圖塊...</i>';
+        container.innerHTML = '<i style="color: #94a3b8;">尚未上傳或載入任何圖塊...</i>';
         return;
     }
     let html = '';
@@ -315,10 +1411,15 @@ function renderTemplateList() {
             <div class="template-item">
                 <span class="color-badge" style="background: ${tpl.color};"></span>
                 <img src="${tpl.img.src}">
-                <input type="text" value="${tpl.name}" onchange="templateLibrary[${idx}].name=this.value" style="width:80px;" title="名稱">
-                <select onchange="templateLibrary[${idx}].attribute=this.value; templateLibrary[${idx}].color=v61Attributes[this.value].color; renderTemplateList();" style="width:90px;" title="屬性">${optionsHtml}</select>
-                <input type="number" min="0.50" max="0.95" step="0.01" value="${tpl.threshold}" onchange="templateLibrary[${idx}].threshold=parseFloat(this.value)" style="width:48px;" title="門檻">
-                <button style="margin:0; background:#95a5a6; padding:2px 6px; font-size:10px;" onclick="templateLibrary.splice(${idx},1); renderTemplateList();">刪除</button>
+                <input type="text" value="${tpl.name}" onchange="templateLibrary[${idx}].name=this.value" style="width:100px;" title="名稱">
+                <select onchange="templateLibrary[${idx}].attribute=this.value; templateLibrary[${idx}].color=v61Attributes[this.value].color; renderTemplateList();" style="width:120px;" title="屬性">${optionsHtml}</select>
+                
+                <div style="display: flex; align-items: center; gap: 4px;" title="門檻: ${tpl.threshold}">
+                    <input type="range" min="0.6" max="0.9" step="0.02" value="${tpl.threshold !== undefined ? tpl.threshold : 0.7}" oninput="templateLibrary[${idx}].threshold=parseFloat(this.value); this.nextElementSibling.innerText=parseFloat(this.value).toFixed(2);" style="width: 80px; accent-color: #f59e0b; cursor: pointer;">
+                    <span style="font-size: calc(var(--base-font-size) * 0.9); color: #f59e0b; min-width: 36px; text-align: right;">${(tpl.threshold !== undefined ? tpl.threshold : 0.7).toFixed(2)}</span>
+                </div>
+
+                <button class="btn" style="background:#ef4444; color:white; padding:4px 8px;" onclick="templateLibrary.splice(${idx},1); renderTemplateList();" title="刪除">✕</button>
             </div>
         `;
     });
@@ -326,26 +1427,14 @@ function renderTemplateList() {
 }
 
 function exportTemplateLibrary() {
-    if (templateLibrary.length === 0) {
-        alert("目前沒有任何圖塊可以匯出！");
-        return;
-    }
-
+    if (templateLibrary.length === 0) return;
     let exportData = templateLibrary.map(tpl => {
         let c = document.createElement('canvas');
-        c.width = tpl.width;
-        c.height = tpl.height;
+        c.width = tpl.width; c.height = tpl.height;
         let ctx = c.getContext('2d');
         ctx.drawImage(tpl.img, 0, 0);
-        
-        return {
-            name: tpl.name,
-            attribute: tpl.attribute,
-            threshold: tpl.threshold,
-            dataUrl: c.toDataURL()
-        };
+        return { name: tpl.name, attribute: tpl.attribute, threshold: tpl.threshold, dataUrl: c.toDataURL() };
     });
-
     let jsonStr = JSON.stringify(exportData, null, 2);
     let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
     let anchor = document.createElement('a');
@@ -359,56 +1448,46 @@ function exportTemplateLibrary() {
 function importTemplateLibrary(event) {
     let file = event.target.files[0];
     if (!file) return;
-
     let reader = new FileReader();
     reader.onload = function(e) {
         try {
             let importedData = JSON.parse(e.target.result);
-            if (!Array.isArray(importedData)) {
-                alert("❌ 格式錯誤：無效的圖庫 JSON 檔案！");
-                return;
-            }
             templateLibrary = []; 
-            loadTemplatesFromData(importedData, file.name);
+            loadTemplatesFromData(importedData, `本地匯入 (${file.name})`);
         } catch (err) {
-            alert("❌ 解析圖庫 JSON 失敗：" + err.message);
+            document.getElementById('result').innerHTML = "❌ 解析圖庫 JSON 失敗：" + err.message;
         }
     };
     reader.readAsText(file);
     event.target.value = '';
 }
 
-function loadTemplatesFromData(importedData, sourceName) {
+function loadTemplatesFromData(importedData, sourceDesc) {
     let loadedCount = 0;
     templateLibrary = []; 
-
     importedData.forEach(item => {
         let img = new Image();
         img.onload = function() {
             let tCanvas = document.createElement('canvas');
-            tCanvas.width = img.width;
-            tCanvas.height = img.height;
+            tCanvas.width = img.width; tCanvas.height = img.height;
             let tCtx = tCanvas.getContext('2d');
             tCtx.drawImage(img, 0, 0);
             let tData = tCtx.getImageData(0, 0, img.width, img.height).data;
-
             let color = v61Attributes[item.attribute] ? v61Attributes[item.attribute].color : "#8e44ad";
 
             templateLibrary.push({
-                name: item.name,
-                attribute: item.attribute,
-                threshold: item.threshold || 0.70,
-                img: img,
-                color: color,
-                data: tData,
-                width: img.width,
-                height: img.height
+                name: item.name, attribute: item.attribute,
+                threshold: item.threshold !== undefined ? item.threshold : 0.7,
+                img: img, color: color, data: tData, width: img.width, height: img.height
             });
 
             loadedCount++;
             if (loadedCount === importedData.length) {
                 renderTemplateList();
-                document.getElementById('result').innerHTML = `✅ 成功載入圖庫 (${sourceName})！共載入 ${importedData.length} 個圖塊。`;
+                let tNameSpan = document.getElementById('templatesFileName');
+                tNameSpan.innerText = `已載入：${sourceDesc}`;
+                tNameSpan.className = "file-status-text";
+                document.getElementById('result').innerHTML = `✅ 成功載入圖庫！共載入 ${importedData.length} 個圖塊。`;
             }
         };
         img.src = item.dataUrl;
@@ -424,54 +1503,65 @@ function drawCanvas() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(mapImg, 0, 0);
 
-    currentNodes.forEach(n => {
+    let showBox = document.getElementById('layerBox').checked;
+    let showAttr = document.getElementById('layerAttr').checked;
+    let showCoord = document.getElementById('layerCoord').checked;
+    let filterVal = document.getElementById('layerFilterSelect').value;
+
+    currentNodes.forEach((n, idx) => {
+        if (filterVal !== 'all' && n.tpl.attribute !== filterVal) return;
+
         let attrConf = v61Attributes[n.tpl.attribute] || { color: "#8e44ad", label: n.tpl.attribute };
-        
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = attrConf.color;
-        ctx.strokeRect(n.x, n.y, n.tw, n.th);
+        let isHoveredForDelete = ((interactionMode === 'delete' || interactionMode === 'edit') && idx === hoveredNodeIndex);
 
-        ctx.fillStyle = attrConf.color;
-        ctx.fillRect(n.x, n.y - 18, ctx.measureText(n.tpl.attribute).width + 10, 16);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 11px sans-serif";
-        ctx.fillText(n.tpl.attribute, n.x + 5, n.y - 6);
+        if (showBox || isHoveredForDelete) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = (interactionMode === 'delete') ? "#ef4444" : (interactionMode === 'edit' ? "#f59e0b" : attrConf.color);
+            if (isHoveredForDelete) ctx.setLineDash([6, 4]);
+            else ctx.setLineDash([]);
+            ctx.strokeRect(n.x, n.y, n.tw, n.th);
+            ctx.setLineDash([]);
+        }
 
-        let coordText = `(${n.gx},${n.gy})`;
-        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-        ctx.fillRect(n.x, n.y + n.th + 2, ctx.measureText(coordText).width + 8, 16);
-        ctx.fillStyle = "#f1c40f";
-        ctx.font = "bold 12px monospace";
-        ctx.fillText(coordText, n.x + 4, n.y + n.th + 14);
+        if (showAttr) {
+            let displayText = n.label ? `${n.label}` : n.tpl.attribute;
+            ctx.fillStyle = attrConf.color;
+            ctx.fillRect(n.x, n.y - 18, ctx.measureText(displayText).width + 10, 16);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText(displayText, n.x + 5, n.y - 6);
+        }
+
+        if (showCoord) {
+            let coordText = `(${n.gx},${n.gy})`;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+            ctx.fillRect(n.x, n.y + n.th + 2, ctx.measureText(coordText).width + 8, 16);
+            ctx.fillStyle = "#facc15";
+            ctx.font = "bold 12px monospace";
+            ctx.fillText(coordText, n.x + 4, n.y + n.th + 14);
+        }
     });
-
-    updateJSONOutput();
 }
 
 document.getElementById('matchBtn').addEventListener('click', function() {
     if (!mapImg || templateLibrary.length === 0) {
-        alert("請先上傳大地圖並選擇/匯入至少一個圖庫！");
+        document.getElementById('result').innerHTML = "⚠️ 請先上傳大地圖並選擇/匯入至少一個圖庫！";
         return;
     }
-
     document.getElementById('result').innerText = `🔄 正在進行圖塊掃描與 Y 軸向上網格編碼...`;
 
     setTimeout(() => {
         let mapCanvas = document.createElement('canvas');
-        mapCanvas.width = mapImg.width;
-        mapCanvas.height = mapImg.height;
+        mapCanvas.width = mapImg.width; mapCanvas.height = mapImg.height;
         let mapCtx = mapCanvas.getContext('2d');
         mapCtx.drawImage(mapImg, 0, 0);
         let mapData = mapCtx.getImageData(0, 0, mapCanvas.width, mapCanvas.height).data;
 
-        let mw = mapImg.width;
-        let mh = mapImg.height;
+        let mw = mapImg.width, mh = mapImg.height;
         let allMatches = [];
 
         templateLibrary.forEach(tpl => {
-            let tw = tpl.width;
-            let th = tpl.height;
-            let tData = tpl.data;
+            let tw = tpl.width, th = tpl.height, tData = tpl.data;
             let step = Math.max(1, Math.floor(tw / 4));
 
             for (let y = 0; y <= mh - th; y += step) {
@@ -486,7 +1576,8 @@ document.getElementById('matchBtn').addEventListener('click', function() {
                         }
                     }
                     let similarity = 1 - ((totalDiff / sampleCount) / 255);
-                    if (similarity >= tpl.threshold) {
+                    let thresholdVal = tpl.threshold !== undefined ? tpl.threshold : 0.7;
+                    if (similarity >= thresholdVal) {
                         allMatches.push({ x, y, tw, th, similarity, tpl });
                     }
                 }
@@ -498,7 +1589,7 @@ document.getElementById('matchBtn').addEventListener('click', function() {
         allMatches.forEach(m => {
             let isOverlap = nodes.some(n => Math.abs(n.x - m.x) < m.tw * 0.8 && Math.abs(n.y - m.y) < m.th * 0.8);
             if (!isOverlap) {
-                nodes.push({ x: m.x, y: m.y, tw: m.tw, th: m.th, tpl: m.tpl, gx: null, gy: null, visited: false });
+                nodes.push({ x: m.x, y: m.y, tw: m.tw, th: m.th, tpl: m.tpl, gx: null, gy: null, visited: false, label: "", jpname: "" });
             }
         });
 
@@ -507,16 +1598,9 @@ document.getElementById('matchBtn').addEventListener('click', function() {
             return;
         }
 
-        nodes.sort((a, b) => {
-            let scoreA = a.x - a.y; 
-            let scoreB = b.x - b.y;
-            return scoreA - scoreB;
-        });
-
+        nodes.sort((a, b) => (a.x - a.y) - (b.x - b.y));
         let originNode = nodes[0];
-        originNode.gx = 0; 
-        originNode.gy = 0; 
-        originNode.visited = true;
+        originNode.gx = 0; originNode.gy = 0; originNode.visited = true;
 
         let gridUnit = originNode.tw * 1.1;
         let queue = [originNode];
@@ -553,95 +1637,120 @@ document.getElementById('matchBtn').addEventListener('click', function() {
 
         currentNodes = nodes;
         blockedConnections = [];
+        updateFilterOptions();
         drawCanvas();
-        document.getElementById('result').innerHTML = `🎯 辨識完成！共識別 ${nodes.length} 個標準網格節點（已修正 Y 軸向上遞增）。`;
+        document.getElementById('result').innerHTML = `🎯 辨識完成！共識別 ${nodes.length} 個標準網格節點。`;
     }, 50);
 });
 
-function updateJSONOutput() {
-    let v62Export = {
+function getGeneratedJSONString() {
+    let v71Export = {
         region: regionNameVal,
         nodes: currentNodes.map(n => ({
             x: n.gx,
             y: n.gy,
-            type: n.tpl.attribute
+            type: n.tpl.attribute,
+            label: n.label || "",
+            jpname: n.jpname || ""
         })),
         blocked: blockedConnections,
         oneway: [],
         shortcuts: []
     };
-    document.getElementById('jsonOutput').value = JSON.stringify(v62Export, null, 2);
+    return JSON.stringify(v71Export, null, 2);
 }
 
-function syncRegionName(val) {
-    regionNameVal = val;
-    updateJSONOutput();
-}
+function syncRegionName(val) { regionNameVal = val; }
 
 function clearResults() {
     currentNodes = [];
     blockedConnections = [];
+    updateFilterOptions();
     if (mapImg) drawCanvas();
     else {
         let canvas = document.getElementById('resultCanvas');
         let ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        document.getElementById('jsonOutput').value = "";
     }
-    document.getElementById('result').innerHTML = "✨ 已清除。";
+    document.getElementById('result').innerHTML = "✨ 已清除辨識結果。";
 }
 
-function updateZoom(val) {
-    currentZoom = parseFloat(val);
-    document.getElementById('zoomVal').innerText = Math.round(currentZoom * 100) + '%';
-    document.getElementById('zoomRange').value = currentZoom;
-    document.getElementById('resultCanvas').style.transform = `scale(${currentZoom})`;
-}
+function resetAllWebsite() {
+    mapImg = null;
+    templateLibrary = [];
+    currentNodes = [];
+    blockedConnections = [];
+    regionNameVal = "Okinawa";
+    currentZoom = 1.0;
+    panState.panX = 0;
+    panState.panY = 0;
 
-function resetZoom() { updateZoom(1.0); }
+    document.getElementById('uploadMap').value = '';
+    document.getElementById('uploadTemplates').value = '';
+    document.getElementById('mapFileName').innerText = '尚未選擇檔案';
+    document.getElementById('mapFileName').className = 'file-status-text';
+    document.getElementById('templatesFileName').innerText = '尚未選擇檔案';
+    document.getElementById('templatesFileName').className = 'file-status-text';
+    document.getElementById('regionName').value = 'Okinawa';
+    document.getElementById('presetLibrarySelect').value = '';
+    document.getElementById('zoomRange').value = '1.0';
+    document.getElementById('zoomVal').innerText = '100%';
+    switchInteractionMode('pan');
+    
+    renderTemplateList();
+    updateFilterOptions();
+    
+    let canvas = document.getElementById('resultCanvas');
+    canvas.width = 300; canvas.height = 150;
+    let ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateCanvasTransform();
+
+    document.getElementById('result').innerHTML = "✨ 初始化完成，請開始上傳大地圖與圖案";
+}
 
 let copyTimeout = null;
 function copyJson() {
-    let textarea = document.getElementById('jsonOutput');
-    if (!textarea.value) return;
-    
-    navigator.clipboard.writeText(textarea.value).then(() => {
-        showCopyTip();
-    }).catch(err => {
+    let jsonStr = getGeneratedJSONString();
+    if (!currentNodes || currentNodes.length === 0) {
+        document.getElementById('result').innerHTML = "⚠️ 尚無辨識數據可供複製！";
+        return;
+    }
+    navigator.clipboard.writeText(jsonStr).then(() => showCopyTip()).catch(err => {
+        let textarea = document.createElement('textarea');
+        textarea.value = jsonStr;
+        document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
+        textarea.remove();
         showCopyTip();
     });
 }
 
-// 💡 新增：直接下載 JSON 檔的 JavaScript 函式
 function downloadJsonFile() {
-    let textarea = document.getElementById('jsonOutput');
-    let jsonContent = textarea.value;
-    if (!jsonContent) {
-        alert("目前沒有可供下載的 JSON 數據！請先執行辨識。");
+    let jsonStr = getGeneratedJSONString();
+    if (!currentNodes || currentNodes.length === 0) {
+        document.getElementById('result').innerHTML = "⚠️ 尚無辨識數據可供下載！";
         return;
     }
-
     let fileName = (regionNameVal ? regionNameVal.trim() : "map_data") + ".json";
-    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonContent);
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
     let anchor = document.createElement('a');
     anchor.setAttribute("href", dataStr);
     anchor.setAttribute("download", fileName);
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+    document.getElementById('result').innerHTML = "💾 JSON 檔案已下載！";
 }
 
 function showCopyTip() {
     let tip = document.getElementById('copyTip');
     tip.classList.add('show');
+    document.getElementById('result').innerHTML = "📋 JSON 資料已成功複製到剪貼簿！";
     if (copyTimeout) clearTimeout(copyTimeout);
-    copyTimeout = setTimeout(() => {
-        tip.classList.remove('show');
-    }, 2000);
+    copyTimeout = setTimeout(() => tip.classList.remove('show'), 2000);
 }
 </script>
 
-</body>
-</html>
+</body></html>
